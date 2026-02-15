@@ -55,6 +55,10 @@ SYSTEM_PROMPT = (
     "- For graph-based values (for example f(2)), read from axes/grid and interpolate proportionally between gridlines.\n"
     "- Do not snap to nearest integer unless the plotted point is exactly on that integer level.\n"
     "- If read is approximate, use a concise decimal estimate.\n"
+    "- For domain/range from graphs, determine endpoint inclusion strictly from markers: filled point = included, open circle = excluded.\n"
+    "- Do not invent holes/discontinuities unless an explicit open circle or break is visible.\n"
+    "- Use the plotted function extent, not the axis bounds, to determine domain/range.\n"
+    "- In WORK for graph domain/range, explicitly state observed endpoint markers and inclusion/exclusion.\n"
     "Graphing-equation rules:\n"
     "- If asked to graph an equation by table, choose reasonable x-values (prefer integers, often around -5 to 5, and include x=0 when useful).\n"
     "- Compute corresponding y-values and provide points in coordinate form.\n"
@@ -478,6 +482,72 @@ def _normalize_final_answer_block(out: str) -> str:
     return "\n".join(normalized).strip()
 
 
+def _section_between(text: str, start_label: str, end_label: Optional[str] = None) -> str:
+    s = str(text or "")
+    m_start = re.search(rf"(?im)^\s*{re.escape(start_label)}\s*:?\s*$", s)
+    if not m_start:
+        return ""
+    rest = s[m_start.end():]
+    if not end_label:
+        return rest.strip()
+    m_end = re.search(rf"(?im)^\s*{re.escape(end_label)}\s*:?\s*$", rest)
+    if not m_end:
+        return rest.strip()
+    return rest[: m_end.start()].strip()
+
+
+def _needs_graph_domain_range_retry(input_obj: Union[str, Image.Image], model_text: str) -> bool:
+    # Only apply this guard to image graph problems with domain/range outputs.
+    if not isinstance(input_obj, Image.Image):
+        return False
+    t = str(model_text or "")
+    low = t.lower()
+    if "domain" not in low or "range" not in low:
+        return False
+    if "graph" not in low and "graphed below" not in low:
+        return False
+
+    final_text = _section_between(t, "FINAL ANSWER")
+    work_text = _section_between(t, "WORK", "FINAL ANSWER")
+    final_low = final_text.lower()
+    work_low = work_text.lower()
+
+    mentions_exclusion = any(k in final_low for k in ("excluding", "not included", "open", "hole"))
+    if not mentions_exclusion:
+        return False
+
+    marker_evidence = any(
+        k in work_low
+        for k in (
+            "open circle",
+            "open endpoint",
+            "hollow",
+            "filled point",
+            "closed point",
+            "solid point",
+        )
+    )
+    return not marker_evidence
+
+
+def _with_graph_domain_range_retry_hint(payload: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    hint = (
+        "Re-check graph domain/range carefully. "
+        "List visible endpoints and marker types first (filled/open), "
+        "then compute intervals from the plotted curve extent only. "
+        "Do not use axis bounds unless the graph actually reaches them."
+    )
+    retry_payload = list(payload)
+    if len(retry_payload) < 2:
+        return retry_payload
+    user_msg = dict(retry_payload[1])
+    content = list(user_msg.get("content", []))
+    content.append({"type": "input_text", "text": hint})
+    user_msg["content"] = content
+    retry_payload[1] = user_msg
+    return retry_payload
+
+
 def _format_fraction(fr: Fraction) -> str:
     if fr.denominator == 1:
         return str(fr.numerator)
@@ -686,6 +756,19 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 temperature=temperature,
                 max_output_tokens=max(16, int(max_output_tokens)),
             )
+            if _needs_graph_domain_range_retry(input_obj, raw_output):
+                retry_payload = _with_graph_domain_range_retry_hint(payload)
+                log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
+                retry_output = _responses_text(
+                    client=client,
+                    model_name=model_name,
+                    input_payload=retry_payload,
+                    timeout=timeout,
+                    temperature=temperature,
+                    max_output_tokens=max(16, int(max_output_tokens)),
+                )
+                if retry_output:
+                    raw_output = retry_output
             break
         except Exception as e:
             log_telemetry("solve_retry", {"attempt": attempt + 1, "error": str(e)})
