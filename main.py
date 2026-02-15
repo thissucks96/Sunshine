@@ -176,7 +176,6 @@ def _probe_model_runtime(model_name: str) -> tuple[bool, str]:
         resp = client.responses.create(
             model=model_name,
             input=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
-            temperature=0.0,
             max_output_tokens=16,
             timeout=probe_timeout,
         )

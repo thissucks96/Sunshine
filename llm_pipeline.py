@@ -276,13 +276,23 @@ def _responses_text(
     temperature: float,
     max_output_tokens: int,
 ) -> str:
-    resp = client.responses.create(
-        model=model_name,
-        input=input_payload,
-        temperature=temperature,
-        max_output_tokens=max(16, int(max_output_tokens)),
-        timeout=timeout,
-    )
+    req = {
+        "model": model_name,
+        "input": input_payload,
+        "temperature": temperature,
+        "max_output_tokens": max(16, int(max_output_tokens)),
+        "timeout": timeout,
+    }
+    try:
+        resp = client.responses.create(**req)
+    except Exception as e:
+        # Some models (for example certain GPT-5 variants) reject temperature.
+        msg = str(e).lower()
+        if "unsupported parameter" in msg and "temperature" in msg:
+            req.pop("temperature", None)
+            resp = client.responses.create(**req)
+        else:
+            raise
     text = getattr(resp, "output_text", None)
     if text:
         return text
