@@ -6,32 +6,35 @@ Use this file as the default instruction set for coding agents working in this r
 
 ## 1) Default Working Style
 
-* Keep changes minimal and local.
-* Avoid architecture rewrites unless explicitly requested.
-* No dependency changes unless explicitly requested.
+* Keep changes minimal and local unless broader change is explicitly requested.
+* Avoid architecture rewrites unless explicitly approved.
+* Do not add or remove dependencies unless explicitly approved.
 * Preserve existing behavior unless fixing a clear bug.
-* Prefer low-risk fixes first.
-* Assume the app is actively used; avoid breaking user workflow.
-* Avoid formatting-only edits unless explicitly requested.
+* Prefer low-risk fixes before structural changes.
+* Assume the app is actively used; avoid breaking workflow.
+* Avoid formatting-only edits unless requested.
+
+When the user explicitly asks for exploratory design or architectural thinking, broader creative proposals are allowed, but do not modify code unless instructed.
 
 ---
 
 ## 2) Execution Rules
 
-* Implement requested changes directly; do not stop at planning unless asked.
-* Keep diffs tightly scoped to touched logic only.
+* Implement requested changes directly unless the task is marked analysis-only.
+* Keep diffs tightly scoped to relevant logic.
 * Run quick validation after edits:
 
   * `python -m py_compile main.py llm_pipeline.py config.py utils.py`
 * If tests exist for touched code, run them.
 * Report blockers immediately.
 * If instructions conflict with this document, pause and ask for clarification.
+* Do not autonomously refactor unrelated systems.
 
 ---
 
 ## 3) Commit Policy
 
-* Create a commit after each completed task unless user says not to.
+* Create a commit after each completed task unless told otherwise.
 * Commit format:
 
   * `<type>: <short summary>`
@@ -44,16 +47,37 @@ Use this file as the default instruction set for coding agents working in this r
 
 ## 4) Safety Rules
 
-* Never run destructive git commands without explicit user approval.
+* Never run destructive git commands without explicit approval.
 * Never revert unrelated user changes.
 * If unexpected file changes appear during work, stop and ask how to proceed.
+* Do not introduce breaking output-format changes without approval.
 * Treat this file as a stable operational contract, not a running log.
 
 ---
 
-## 5) New Task Kickoff Template
+## 5) Autonomy Model
 
-When starting a new task, expect a kickoff block structured like:
+Default Mode: Controlled Engineering
+
+* Minimal scope
+* No architecture rewrites
+* No dependency changes
+* Deterministic output preserved
+
+Exploration Mode (only when explicitly requested)
+
+* Broader architectural suggestions allowed
+* Structural redesign proposals allowed
+* Performance or reliability improvements may be proposed
+* Code modifications still require explicit approval
+
+If unclear which mode applies, ask before proceeding.
+
+---
+
+## 6) New Task Kickoff Template
+
+When starting a structured task, expect a kickoff block:
 
 ```
 Goal:
@@ -70,7 +94,7 @@ Follow it strictly.
 
 ---
 
-## 6) Current Project Priorities
+## 7) Current Project Priorities
 
 * Reliability over raw speed.
 * Keep solve output deterministic and concise.
@@ -81,22 +105,21 @@ Follow it strictly.
 
 ---
 
-## 7) Documentation & Reviews
+## 8) Documentation & Reviews
 
 * Do not place time-specific code reviews inside `AGENTS.md`.
 * Store comprehensive reviews in `/docs` using a date-based filename:
 
   * `docs/ARCHITECTURE_REVIEW_<YYYY_MM>.md`
-* If durable design decisions emerge from a review, extract only those into:
+* Extract durable design decisions into:
 
   * `docs/ARCHITECTURE.md`
   * or `docs/ROADMAP.md`
-* Keep this file limited to persistent operational rules.
 * Treat review documents as audits, not contracts.
 
 ---
 
-## 8) Documentation Awareness (Pre-Task Requirement)
+## 9) Documentation Awareness (Pre-Task Requirement)
 
 Before beginning any new task, review the following files if they exist:
 
@@ -106,9 +129,9 @@ Before beginning any new task, review the following files if they exist:
 
 Use these documents to:
 
-* Align changes with existing architecture decisions.
-* Avoid reintroducing previously identified risks.
-* Follow established roadmap direction.
+* Align changes with architecture direction.
+* Avoid reintroducing known risks.
+* Follow established roadmap priorities.
 
 If documentation conflicts with user instructions, pause and ask for clarification.
 
@@ -116,10 +139,12 @@ Do not summarize documentation unless requested. Use it as internal guidance onl
 
 ---
 
-This structure gives you:
+This version gives you:
 
-* Stable behavioral guardrails
-* Clean separation of audit vs policy
-* Controlled commits
-* Documentation continuity
-* Reduced architectural drift
+* Safe default behavior
+* Controlled exploration when desired
+* No silent architecture drift
+* Clean documentation separation
+* Long-term scalability
+
+This is now a mature governance model, not just a rule sheet.
