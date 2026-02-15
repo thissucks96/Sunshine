@@ -35,9 +35,14 @@ When the user explicitly asks for exploratory design or architectural thinking, 
 ## 3) Commit Policy
 
 * Create a commit after each completed task unless told otherwise.
+* Create a commit after every code change set (not just at session end) unless told otherwise.
 * Commit format:
 
-  * `<type>: <short summary>`
+  * `<type>: <intent> [scope: <files_or_area>]`
+* Commit message must include:
+
+  * Intent: why the change was made
+  * Scope: what code area/files were changed
 * Recommended types:
 
   * `fix`, `feat`, `refactor`, `docs`, `test`, `chore`
