@@ -104,6 +104,27 @@ STARRED_CONTEXT_GUIDE = (
 )
 
 
+def _normalize_star_label(raw: str) -> str:
+    s = " ".join(str(raw or "").upper().split())
+    if not s:
+        return ""
+    hits = []
+    for token, label in (
+        ("TEXTUAL", "TEXTUAL"),
+        ("TEXT", "TEXTUAL"),
+        ("VISUAL", "VISUAL"),
+        ("IMAGE", "VISUAL"),
+        ("GRAPH", "VISUAL"),
+    ):
+        idx = s.find(token)
+        if idx != -1:
+            hits.append((idx, label))
+    if not hits:
+        return ""
+    hits.sort(key=lambda x: x[0])
+    return hits[0][1]
+
+
 def _starred_meta_path() -> str:
     return os.path.join(app_home_dir(), STARRED_META_FILE)
 
@@ -896,30 +917,73 @@ def toggle_star_worker(client: OpenAI) -> None:
                 {"role": "system", "content": [{"type": "input_text", "text": STAR_CLASSIFY_PROMPT}]},
                 {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{img_b64}"}]},
             ]
-            label = _responses_text(
+            label_raw = _responses_text(
                 client=client,
                 model_name=model_name,
                 input_payload=classify_payload,
                 timeout=int(cfg.get("classify_timeout", 8)),
                 temperature=0.0,
-                max_output_tokens=16,
-            ).strip().upper()
+                max_output_tokens=32,
+            ).strip()
+            label = _normalize_star_label(label_raw)
 
-            if "TEXTUAL" in label:
-                ocr_img = preprocess_for_ocr(img)
-                ocr_b64 = image_to_base64_png(ocr_img)
-                ocr_payload = [
+            # Fallback 1: retry classifier with a stable vision model if primary label is empty/ambiguous.
+            if not label:
+                fallback_model = str(cfg.get("reference_classifier_model", "gpt-4o-mini") or "").strip()
+                if fallback_model and fallback_model != model_name:
+                    fallback_raw = _responses_text(
+                        client=client,
+                        model_name=fallback_model,
+                        input_payload=classify_payload,
+                        timeout=int(cfg.get("classify_timeout", 8)),
+                        temperature=0.0,
+                        max_output_tokens=32,
+                    ).strip()
+                    label = _normalize_star_label(fallback_raw)
+                    if label:
+                        log_telemetry(
+                            "ref_classifier_fallback_model",
+                            {"primary_model": model_name, "fallback_model": fallback_model, "label": label},
+                        )
+
+            # Fallback 2: never fail as EMPTY; infer from OCR availability.
+            ocr_text_fallback = ""
+            if not label:
+                ocr_probe_img = preprocess_for_ocr(img)
+                ocr_probe_b64 = image_to_base64_png(ocr_probe_img)
+                ocr_probe_payload = [
                     {"role": "system", "content": [{"type": "input_text", "text": STAR_OCR_PROMPT}]},
-                    {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{ocr_b64}"}]},
+                    {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{ocr_probe_b64}"}]},
                 ]
-                ocr_text = _responses_text(
+                ocr_text_fallback = _responses_text(
                     client=client,
                     model_name=model_name,
-                    input_payload=ocr_payload,
+                    input_payload=ocr_probe_payload,
                     timeout=int(cfg.get("ocr_timeout", 12)),
                     temperature=0.0,
                     max_output_tokens=1200,
                 ).strip()
+                label = "TEXTUAL" if ocr_text_fallback else "VISUAL"
+                log_telemetry("ref_classifier_empty_fallback", {"resolved_label": label, "model": model_name})
+
+            if label == "TEXTUAL":
+                if ocr_text_fallback:
+                    ocr_text = ocr_text_fallback
+                else:
+                    ocr_img = preprocess_for_ocr(img)
+                    ocr_b64 = image_to_base64_png(ocr_img)
+                    ocr_payload = [
+                        {"role": "system", "content": [{"type": "input_text", "text": STAR_OCR_PROMPT}]},
+                        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{ocr_b64}"}]},
+                    ]
+                    ocr_text = _responses_text(
+                        client=client,
+                        model_name=model_name,
+                        input_payload=ocr_payload,
+                        timeout=int(cfg.get("ocr_timeout", 12)),
+                        temperature=0.0,
+                        max_output_tokens=1200,
+                    ).strip()
                 if not ocr_text:
                     set_status("REF assign failed: OCR returned empty text")
                     return
@@ -940,7 +1004,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                 set_reference_active(True)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
                 set_status(f"REF SET TEXT ASSUMED: {summary}")
-            elif "VISUAL" in label:
+            elif label == "VISUAL":
                 img_dir = _starred_base_dir()
                 img_path = os.path.join(img_dir, STARRED_IMG_FILE)
                 img.save(img_path, format="PNG")
@@ -963,7 +1027,8 @@ def toggle_star_worker(client: OpenAI) -> None:
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
                 set_status(f"REF SET IMG ASSUMED: {summary}")
             else:
-                set_status(f"REF assign failed: classifier returned '{label or 'EMPTY'}'")
+                # Guard path should be unreachable due fallback logic above.
+                set_status(f"REF assign failed: classifier returned '{label_raw or 'EMPTY'}'")
             return
         except Exception as e:
             log_telemetry("star_image_error", {"error": str(e)})
