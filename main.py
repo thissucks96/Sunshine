@@ -163,7 +163,16 @@ def _announce_model_active(model_name: str) -> bool:
     return _verify_model_clipboard(model_name)
 
 
-def _probe_model_runtime(model_name: str) -> tuple[bool, str]:
+def _model_name_matches(requested_model: str, response_model: str) -> bool:
+    req = str(requested_model or "").strip().lower()
+    got = str(response_model or "").strip().lower()
+    if not req or not got:
+        # Do not hard-fail when response metadata is missing.
+        return True
+    return got == req or got.startswith(req + "-") or req.startswith(got + "-")
+
+
+def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, require_match: bool = True) -> tuple[bool, str]:
     cfg = get_config()
     api_key = resolve_api_key(cfg)
     if not api_key:
@@ -171,20 +180,35 @@ def _probe_model_runtime(model_name: str) -> tuple[bool, str]:
 
     timeout = int(cfg.get("request_timeout", 25))
     probe_timeout = max(5, min(timeout, 12))
+    probe_model = str(call_model or model_name).strip() or str(model_name)
     try:
         client = OpenAI(api_key=api_key)
         resp = client.responses.create(
-            model=model_name,
+            model=probe_model,
             input=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
             max_output_tokens=16,
             timeout=probe_timeout,
         )
+        response_model = str(getattr(resp, "model", "") or "")
+        if require_match and not _model_name_matches(model_name, response_model):
+            reason = f"probe model mismatch expected '{model_name}' got '{response_model or probe_model}'"
+            log_telemetry(
+                "model_probe_failed",
+                {
+                    "requested_model": model_name,
+                    "called_model": probe_model,
+                    "response_model": response_model,
+                    "error": reason,
+                },
+            )
+            return False, reason
         # Best-effort telemetry to prove a token-using call hit the requested model.
         log_telemetry(
             "model_probe_ok",
             {
                 "requested_model": model_name,
-                "response_model": str(getattr(resp, "model", "") or ""),
+                "called_model": probe_model,
+                "response_model": response_model,
             },
         )
         return True, ""
@@ -503,6 +527,20 @@ def _on_tray_refresh_model_list(icon, _item):
     _refresh_tray_menu(icon)
 
 
+def _on_tray_model_x_test(_icon, _item):
+    def _run():
+        # Intentional mismatch test: should fail if model verification is working.
+        expected_model = "gpt-5-mini"
+        called_model = "gpt-4o"
+        ok, reason = _probe_model_runtime(expected_model, call_model=called_model, require_match=True)
+        if ok:
+            set_status(f"MODEL X TEST UNEXPECTED PASS: expected {expected_model}, called {called_model}")
+        else:
+            set_status(f"MODEL X TEST FAIL (EXPECTED): {reason}")
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def _is_model_checked(model_name: str) -> bool:
     return _active_model_name() == str(model_name)
 
@@ -538,6 +576,7 @@ def _build_tray_menu():
         for m in models
     ]
     model_items.append(item("Refresh Model List", _on_tray_refresh_model_list))
+    model_items.append(item("Model X Test", _on_tray_model_x_test))
 
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
