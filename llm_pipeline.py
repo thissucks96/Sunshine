@@ -2,6 +2,8 @@ import os
 import io
 import json
 import base64
+import re
+from fractions import Fraction
 from typing import Any, Dict, List, Optional, Union
 
 import pyperclip
@@ -52,6 +54,18 @@ SYSTEM_PROMPT = (
     "- For graph-based values (for example f(2)), read from axes/grid and interpolate proportionally between gridlines.\n"
     "- Do not snap to nearest integer unless the plotted point is exactly on that integer level.\n"
     "- If read is approximate, use a concise decimal estimate.\n"
+    "Graphing-equation rules:\n"
+    "- If asked to graph an equation by table, choose reasonable x-values (prefer integers, often around -5 to 5, and include x=0 when useful).\n"
+    "- Compute corresponding y-values and provide points in coordinate form.\n"
+    "- WORK must include a line formatted exactly as: Points to plot: (x1, y1), (x2, y2), ...\n"
+    "- FINAL ANSWER must list only the coordinate set for the plotted points.\n"
+    "- For linear equations, if domain/range is requested, both are All Real Numbers.\n"
+    "Domain/range format rules:\n"
+    "- When domain/range is requested, provide BOTH interval notation and words, concisely.\n"
+    "- Prefer compact lines in FINAL ANSWER:\n"
+    "Domain: <interval> (<words>)\n"
+    "Range: <interval> (<words>)\n"
+    "- For all real numbers, interval notation must be exactly: (-∞, ∞)\n"
     "Other rules:\n"
     "- Preserve original requested-item order exactly.\n"
     "- For inequalities, use interval notation.\n"
@@ -79,7 +93,8 @@ STAR_VISUAL_SUMMARY_PROMPT = (
 
 STARRED_CONTEXT_GUIDE = (
     "Use STARRED reference as optional context only.\n"
-    "Prioritize the current problem input.\n"
+    "CURRENT PROBLEM is primary and must control the answer.\n"
+    "Do not answer prompts that appear only in STARRED reference.\n"
     "If reference conflicts with current input, trust current input.\n"
 )
 
@@ -291,21 +306,31 @@ def _build_solve_payload(
     if isinstance(input_obj, Image.Image):
         cur_b64 = image_to_base64_png(input_obj)
         if reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64:
-            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + "Reference image first, current image second."})
+            # Keep current problem first so vision attention anchors on the task to solve.
+            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + "CURRENT PROBLEM IMAGE (solve this):"})
+            user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{cur_b64}"})
+            user_parts.append({"type": "input_text", "text": "OPTIONAL STARRED REFERENCE IMAGE (secondary context only):"})
             user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{reference_img_b64}"})
-            user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{cur_b64}"})
         elif reference_active and reference_type == REFERENCE_TYPE_TEXT and reference_text:
-            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + f"STARRED TEXT:\n{reference_text}\n\nNow solve current image."})
+            ref_text_context = preview_text(reference_text, 1200)
+            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + "CURRENT PROBLEM IMAGE (solve this):"})
             user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{cur_b64}"})
+            user_parts.append({"type": "input_text", "text": f"OPTIONAL STARRED TEXT (secondary context only):\n{ref_text_context}"})
         else:
             user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{cur_b64}"})
     else:
         cur_text = str(input_obj)
         if reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64:
-            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + f"CURRENT PROBLEM:\n{cur_text}"})
+            user_parts.append({"type": "input_text", "text": STARRED_CONTEXT_GUIDE + f"CURRENT PROBLEM (solve this):\n{cur_text}"})
+            user_parts.append({"type": "input_text", "text": "OPTIONAL STARRED REFERENCE IMAGE (secondary context only):"})
             user_parts.append({"type": "input_image", "image_url": f"data:image/png;base64,{reference_img_b64}"})
         elif reference_active and reference_type == REFERENCE_TYPE_TEXT and reference_text:
-            merged = STARRED_CONTEXT_GUIDE + f"STARRED TEXT:\n{reference_text}\n\nCURRENT PROBLEM:\n{cur_text}"
+            ref_text_context = preview_text(reference_text, 1200)
+            merged = (
+                STARRED_CONTEXT_GUIDE
+                + f"CURRENT PROBLEM (solve this):\n{cur_text}\n\n"
+                + f"OPTIONAL STARRED TEXT (secondary context only):\n{ref_text_context}"
+            )
             user_parts.append({"type": "input_text", "text": merged})
         else:
             user_parts.append({"type": "input_text", "text": cur_text})
@@ -326,6 +351,114 @@ def clean_output(text: str) -> str:
             continue
         cleaned.append(line)
     return "\n".join(cleaned).strip()
+
+
+def _format_fraction(fr: Fraction) -> str:
+    if fr.denominator == 1:
+        return str(fr.numerator)
+    return f"{fr.numerator}/{fr.denominator}"
+
+
+def _parse_linear_rhs(rhs: str) -> Optional[tuple[Fraction, Fraction]]:
+    expr = str(rhs or "").strip().lower().replace(" ", "")
+    expr = expr.rstrip(".")
+    if not expr:
+        return None
+
+    # y = x / y = -x
+    if expr == "x":
+        return Fraction(1), Fraction(0)
+    if expr == "-x":
+        return Fraction(-1), Fraction(0)
+
+    # y = mx + b, with optional b and optional explicit m (e.g., x, -x, 3x, -1/3x+3)
+    m = re.fullmatch(r"([+-]?(?:(?:\d+/\d+)|\d+)?)x(?:([+-](?:(?:\d+/\d+)|\d+)))?", expr)
+    if m:
+        m_raw = m.group(1)
+        b_raw = m.group(2)
+        if m_raw in ("", "+"):
+            slope = Fraction(1)
+        elif m_raw == "-":
+            slope = Fraction(-1)
+        else:
+            slope = Fraction(m_raw)
+        intercept = Fraction(b_raw) if b_raw else Fraction(0)
+        return slope, intercept
+
+    # Horizontal line y = c
+    c = re.fullmatch(r"([+-]?(?:(?:\d+/\d+)|\d+))", expr)
+    if c:
+        return Fraction(0), Fraction(c.group(1))
+
+    return None
+
+
+def _maybe_enforce_points_to_plot(out: str) -> str:
+    lower = out.lower()
+    graph_cues = (
+        "graph the equation",
+        "table of values",
+        "graph k(x)",
+        "graph f(x)",
+        "graph y",
+    )
+    if not any(cue in lower for cue in graph_cues):
+        return out
+    if "points to plot:" in lower:
+        return out
+
+    eq_match = re.search(r"(?:\b[a-z]\s*\(\s*x\s*\)|\by)\s*=\s*([^\n\r]+)", out, flags=re.IGNORECASE)
+    if not eq_match:
+        return out
+    parsed = _parse_linear_rhs(eq_match.group(1))
+    if parsed is None:
+        return out
+    slope, intercept = parsed
+
+    x_vals = [Fraction(-3), Fraction(0), Fraction(3)]
+    points = []
+    for x in x_vals:
+        y = slope * x + intercept
+        points.append(f"({_format_fraction(x)}, {_format_fraction(y)})")
+    points_line = f"Points to plot: {', '.join(points)}"
+
+    if "FINAL ANSWER:" in out:
+        head, _sep, _tail = out.partition("FINAL ANSWER:")
+        if "WORK:" in head and "Points to plot:" not in head:
+            head = head.rstrip() + "\n" + points_line + "\n"
+        return head + "FINAL ANSWER:\n" + ", ".join(points)
+
+    return out.rstrip() + "\nWORK:\n" + points_line + "\nFINAL ANSWER:\n" + ", ".join(points)
+
+
+def _maybe_enforce_domain_range_intervals(out: str) -> str:
+    lower = out.lower()
+    if "domain" not in lower and "range" not in lower:
+        return out
+
+    domain_all_reals = bool(
+        re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", out, flags=re.IGNORECASE)
+    )
+    range_all_reals = bool(
+        re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", out, flags=re.IGNORECASE)
+    )
+    if not domain_all_reals and not range_all_reals:
+        return out
+
+    compact_lines = []
+    if domain_all_reals:
+        compact_lines.append("Domain: (-∞, ∞) (All Real Numbers)")
+    if range_all_reals:
+        compact_lines.append("Range: (-∞, ∞) (All Real Numbers)")
+
+    if not compact_lines:
+        return out
+
+    # Canonicalize FINAL ANSWER block to prevent duplicated domain/range lines.
+    if "FINAL ANSWER:" in out:
+        head, _sep, _tail = out.partition("FINAL ANSWER:")
+        return head.rstrip() + "\nFINAL ANSWER:\n" + "\n".join(compact_lines)
+    return out.rstrip() + "\nFINAL ANSWER:\n" + "\n".join(compact_lines)
 
 
 def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
@@ -431,6 +564,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         return
 
     out = clean_output(apply_safe_symbols(raw_output)).strip()
+    out = _maybe_enforce_points_to_plot(out)
+    out = _maybe_enforce_domain_range_intervals(out)
     if not out:
         set_status("Model returned empty output.")
         return

@@ -1,9 +1,8 @@
 import ctypes
-import json
 import sys
 import threading
 import time
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Optional, Set
 
 import pyperclip
 import pystray
@@ -19,7 +18,7 @@ from config import (
     resolve_api_key,
     update_config_values,
 )
-from llm_pipeline import clear_reference_state, toggle_star_worker, solve_pipeline
+from llm_pipeline import clear_reference_state, load_starred_meta, solve_pipeline, toggle_star_worker
 from utils import (
     log_telemetry,
     normalize_image_for_api,
@@ -40,7 +39,13 @@ except ImportError:
 
 _SINGLE_INSTANCE_MUTEX = None
 _HOTKEY_HANDLES = []
-_MODIFIER_KEYS = {"ctrl", "alt", "shift", "windows"}
+_TRAY_ICON = None
+
+# Hotkeys are intentionally fixed in source; runtime editing is removed.
+RUN_HOTKEY = "ctrl+shift+x"
+REF_TOGGLE_HOTKEY = "ctrl+shift+s"
+QUIT_HOTKEY = "ctrl+shift+q"
+CYCLE_MODEL_HOTKEY = "ctrl+shift+m"
 
 STOP_EVENT = threading.Event()
 _solve_lock = threading.Lock()
@@ -111,56 +116,6 @@ def _parse_combo_keys(hotkey: str) -> Set[str]:
     return keys
 
 
-def _normalize_hotkey_combo(combo: str) -> str:
-    raw_parts = str(combo or "").split("+")
-    parts = []
-    for raw in raw_parts:
-        p = raw.strip()
-        if not p:
-            raise ValueError("invalid hotkey syntax")
-        key = _canonical_key_name(p)
-        if not key:
-            raise ValueError("invalid hotkey syntax")
-        parts.append(key)
-
-    if not parts:
-        raise ValueError("hotkey is empty")
-    if len(set(parts)) != len(parts):
-        raise ValueError("hotkey contains duplicate keys")
-    if not any(k in _MODIFIER_KEYS for k in parts):
-        raise ValueError("hotkey must include a modifier")
-    if all(k in _MODIFIER_KEYS for k in parts):
-        raise ValueError("hotkey must include a non-modifier key")
-
-    return "+".join(parts)
-
-
-def _collect_hotkeys_from_cfg(cfg: Dict[str, object]) -> Dict[str, str]:
-    return {
-        "run_hotkey": str(cfg.get("run_hotkey", "ctrl+shift+x") or "ctrl+shift+x"),
-        "star_hotkey": str(cfg.get("star_hotkey", "ctrl+shift+s") or "ctrl+shift+s"),
-        "quit_hotkey": str(cfg.get("quit_hotkey", "ctrl+shift+q") or "ctrl+shift+q"),
-        "cycle_model_hotkey": str(cfg.get("cycle_model_hotkey", "ctrl+shift+m") or "ctrl+shift+m"),
-    }
-
-
-def _validate_hotkey_assignments(hotkeys: Dict[str, str]) -> Tuple[bool, str, Dict[str, str]]:
-    normalized: Dict[str, str] = {}
-    for key_name, combo in hotkeys.items():
-        try:
-            normalized[key_name] = _normalize_hotkey_combo(combo)
-        except ValueError as e:
-            return False, f"{key_name} {e}", {}
-
-    seen: Dict[str, str] = {}
-    for key_name, combo in normalized.items():
-        if combo in seen:
-            return False, f"conflict between {seen[combo]} and {key_name}", {}
-        seen[combo] = key_name
-
-    return True, "", normalized
-
-
 def _normalize_available_models(cfg: Dict[str, object]) -> list:
     raw_models = cfg.get("available_models")
     models = []
@@ -185,11 +140,27 @@ def _active_model_name(cfg: Optional[Dict[str, object]] = None) -> str:
     return str(c.get("model", MODEL) or MODEL).strip() or MODEL
 
 
-def _announce_model_active(model_name: str) -> None:
+def _verify_model_clipboard(model_name: str) -> bool:
+    expected = f"MODEL ACTIVE: {model_name}"
+    try:
+        actual = (pyperclip.paste() or "").strip()
+    except Exception as e:
+        log_telemetry("model_clipboard_verify", {"expected": expected, "ok": False, "error": str(e)})
+        return False
+    ok = actual == expected
+    log_telemetry(
+        "model_clipboard_verify",
+        {"expected": expected, "actual_sample": actual[:120], "ok": ok},
+    )
+    return ok
+
+
+def _announce_model_active(model_name: str) -> bool:
     line = f"MODEL ACTIVE: {model_name}"
     if not safe_clipboard_write(line):
         log_telemetry("model_active_clipboard_error", {"model": model_name})
     set_status(line)
+    return _verify_model_clipboard(model_name)
 
 
 def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional[Dict[str, object]]:
@@ -261,71 +232,6 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
         _refresh_tray_menu(icon)
 
 
-def _show_hotkey_input_dialog(title: str, prompt: str, initial_value: str) -> Optional[str]:
-    try:
-        import tkinter as tk
-        from tkinter import simpledialog
-
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        value = simpledialog.askstring(title, prompt, initialvalue=initial_value, parent=root)
-        root.destroy()
-        return value
-    except Exception as e:
-        log_telemetry("hotkey_update_failed", {"reason": "input_dialog_error", "error": str(e)})
-        set_status("HOTKEY UPDATE FAILED: input dialog unavailable")
-        return None
-
-
-def _set_hotkey_from_tray(icon, key_name: str, label: str) -> None:
-    cfg = get_config()
-    old_hotkey = str(cfg.get(key_name, "") or "")
-    raw_value = _show_hotkey_input_dialog(
-        title="Set Hotkey",
-        prompt=f"Enter new {label} hotkey (example: ctrl+alt+r)",
-        initial_value=old_hotkey,
-    )
-    if raw_value is None:
-        log_telemetry("hotkey_update_failed", {"key_name": key_name, "reason": "cancelled"})
-        set_status("HOTKEY UPDATE FAILED: cancelled")
-        return
-
-    try:
-        new_hotkey = _normalize_hotkey_combo(raw_value)
-    except ValueError as e:
-        reason = str(e)
-        log_telemetry("hotkey_update_failed", {"key_name": key_name, "reason": reason})
-        set_status(f"HOTKEY UPDATE FAILED: {reason}")
-        return
-
-    proposed = _collect_hotkeys_from_cfg(cfg)
-    proposed[key_name] = new_hotkey
-    valid, reason, normalized = _validate_hotkey_assignments(proposed)
-    if not valid:
-        log_telemetry("hotkey_conflict", {"key_name": key_name, "reason": reason, "attempted": new_hotkey})
-        set_status(f"HOTKEY UPDATE FAILED: {reason}")
-        return
-
-    updated = _persist_config_changes({key_name: normalized[key_name]}, source="hotkey_update")
-    if updated is None:
-        log_telemetry("hotkey_update_failed", {"key_name": key_name, "reason": "persist_failed"})
-        set_status("HOTKEY UPDATE FAILED: unable to persist config")
-        return
-
-    if not setup_hotkeys(icon, announce=False):
-        rollback = _persist_config_changes({key_name: old_hotkey}, source="hotkey_update_rollback")
-        if rollback is not None:
-            setup_hotkeys(icon, announce=False)
-        log_telemetry("hotkey_update_failed", {"key_name": key_name, "reason": "runtime_rebind_failed"})
-        set_status("HOTKEY UPDATE FAILED: runtime rebind failed")
-        return
-
-    log_telemetry("hotkey_updated", {"key_name": key_name, "old": old_hotkey, "new": normalized[key_name]})
-    set_status(f"HOTKEY UPDATED: {label} = {normalized[key_name]}")
-    _refresh_tray_menu(icon)
-
-
 def _is_ref_combo_active() -> bool:
     if not _ref_combo_keys:
         return False
@@ -337,6 +243,8 @@ def _launch_star_worker_atomic() -> None:
     try:
         star_worker()
     finally:
+        if _TRAY_ICON is not None:
+            _refresh_tray_menu(_TRAY_ICON)
         with _ref_dispatch_lock:
             _ref_toggle_in_progress = False
 
@@ -474,14 +382,6 @@ def _unregister_hotkeys() -> None:
 def setup_hotkeys(icon, announce: bool = True) -> bool:
     global _KEYBOARD_HOOK_HANDLE, _ref_combo_keys, _prev_ref_combo_active
     global _last_ref_toggle_ts, _ref_toggle_in_progress, _app_start_ts
-    cfg = get_config()
-    hotkeys = _collect_hotkeys_from_cfg(cfg)
-    valid, reason, normalized = _validate_hotkey_assignments(hotkeys)
-    if not valid:
-        log_telemetry("hotkey_conflict", {"reason": reason, "hotkeys": hotkeys})
-        if announce:
-            set_status(f"HOTKEY UPDATE FAILED: {reason}")
-        return False
 
     if not KEYBOARD_AVAILABLE:
         if announce:
@@ -490,10 +390,11 @@ def setup_hotkeys(icon, announce: bool = True) -> bool:
 
     _unregister_hotkeys()
     try:
-        run_hk = normalized["run_hotkey"]
-        quit_hk = normalized["quit_hotkey"]
-        star_hk = normalized["star_hotkey"]
-        cycle_hk = normalized["cycle_model_hotkey"]
+        # Bind fixed hotkeys from source; no runtime config-based overrides.
+        run_hk = RUN_HOTKEY
+        quit_hk = QUIT_HOTKEY
+        star_hk = REF_TOGGLE_HOTKEY
+        cycle_hk = CYCLE_MODEL_HOTKEY
 
         _HOTKEY_HANDLES.append(keyboard.add_hotkey(run_hk, lambda: _debounced("run", worker)))
         _HOTKEY_HANDLES.append(keyboard.add_hotkey(quit_hk, lambda: on_quit(icon, None)))
@@ -535,7 +436,19 @@ def _on_tray_solve_now(_icon, _item):
 
 
 def _on_tray_star_toggle(_icon, _item):
-    threading.Thread(target=star_worker, daemon=True).start()
+    def _toggle_and_refresh():
+        before_state = _is_ref_active_session()
+        try:
+            star_worker()
+        finally:
+            after_state = _is_ref_active_session()
+            if after_state != before_state:
+                # Explicit state feedback requested for menu-triggered REF toggles.
+                set_status("REF ON" if after_state else "REF OFF")
+            if _TRAY_ICON is not None:
+                _refresh_tray_menu(_TRAY_ICON)
+
+    threading.Thread(target=_toggle_and_refresh, daemon=True).start()
 
 
 def _on_tray_select_model(icon, _item, model_name: str):
@@ -549,33 +462,16 @@ def _on_tray_refresh_model_list(icon, _item):
     _refresh_tray_menu(icon)
 
 
-def _on_tray_set_run_hotkey(icon, _item):
-    _set_hotkey_from_tray(icon, "run_hotkey", "run")
-
-
-def _on_tray_set_star_hotkey(icon, _item):
-    _set_hotkey_from_tray(icon, "star_hotkey", "STAR")
-
-
-def _on_tray_set_quit_hotkey(icon, _item):
-    _set_hotkey_from_tray(icon, "quit_hotkey", "quit")
-
-
-def _on_tray_set_cycle_model_hotkey(icon, _item):
-    _set_hotkey_from_tray(icon, "cycle_model_hotkey", "cycle model")
-
-
-def _on_tray_show_current_config(_icon, _item):
-    cfg = get_config()
-    cfg_txt = json.dumps(cfg, indent=2)
-    if safe_clipboard_write(cfg_txt):
-        set_status("Current config copied to clipboard")
-    else:
-        set_status("Failed to copy current config")
-
-
 def _is_model_checked(model_name: str) -> bool:
     return _active_model_name() == str(model_name)
+
+
+def _is_ref_active_session() -> bool:
+    try:
+        return bool(load_starred_meta().get("reference_active", False))
+    except Exception as e:
+        log_telemetry("ref_state_read_error", {"error": str(e)})
+        return False
 
 
 def _make_model_select_action(model_name: str):
@@ -588,6 +484,8 @@ def _make_model_select_action(model_name: str):
 def _build_tray_menu():
     cfg = get_config()
     models = _normalize_available_models(cfg)
+    ref_active = _is_ref_active_session()
+    ref_label = "REF ON" if ref_active else "REF OFF"
 
     model_items = [
         item(
@@ -602,19 +500,9 @@ def _build_tray_menu():
 
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
-        item("STAR Toggle", _on_tray_star_toggle),
+        item(ref_label, _on_tray_star_toggle, default=True),
         item("Model", pystray.Menu(*model_items)),
-        item(
-            "Hotkeys",
-            pystray.Menu(
-                item("Set Run Hotkey", _on_tray_set_run_hotkey),
-                item("Set STAR Hotkey", _on_tray_set_star_hotkey),
-                item("Set Quit Hotkey", _on_tray_set_quit_hotkey),
-                item("Set Cycle Model Hotkey", _on_tray_set_cycle_model_hotkey),
-            ),
-        ),
-        item("Show Current Config", _on_tray_show_current_config),
-        item("Quit", on_quit),
+        # No Quit menu item: close is handled by right-click tray policy.
     )
 
 
@@ -629,6 +517,52 @@ def _refresh_tray_menu(icon) -> None:
         log_telemetry("tray_menu_update_error", {"error": str(e)})
 
 
+def _close_icon_only(icon) -> None:
+    # Close app without mutating REF state for tray click-close behavior.
+    STOP_EVENT.set()
+    _unregister_hotkeys()
+    try:
+        icon.stop()
+    except Exception:
+        pass
+
+
+def _install_tray_click_policy(icon) -> None:
+    # Windows backend only: middle-click opens menu, left/right clicks close app.
+    try:
+        from pystray._util import win32 as tray_win32
+    except Exception:
+        return
+
+    WM_MBUTTONUP = 0x0208
+    # Bind the original backend handler from the class so left-click can still open the menu.
+    orig_notify = icon.__class__._on_notify.__get__(icon, icon.__class__)
+    if orig_notify is None:
+        return
+
+    def _custom_on_notify(wparam, lparam):
+        if lparam == WM_MBUTTONUP:
+            # Middle-click is the only menu-open action.
+            return orig_notify(wparam, tray_win32.WM_RBUTTONUP)
+        if lparam == tray_win32.WM_RBUTTONUP:
+            # Right-click closes app without clearing REF state.
+            _close_icon_only(icon)
+            return
+        if lparam == tray_win32.WM_LBUTTONUP:
+            # Left-click also closes app without clearing REF state.
+            _close_icon_only(icon)
+            return
+        return orig_notify(wparam, lparam)
+
+    try:
+        icon._on_notify = _custom_on_notify  # type: ignore[attr-defined]
+        handlers = getattr(icon, "_message_handlers", None)
+        if isinstance(handlers, dict):
+            handlers[tray_win32.WM_NOTIFY] = _custom_on_notify
+    except Exception as e:
+        log_telemetry("tray_click_policy_error", {"error": str(e)})
+
+
 def on_quit(icon, _item):
     clear_reference_state(source="exit", status_message="REF CLEARED ON EXIT")
     STOP_EVENT.set()
@@ -640,6 +574,7 @@ def on_quit(icon, _item):
 
 
 def main():
+    global _TRAY_ICON
     if not ensure_single_instance():
         msg = "App is already running."
         try:
@@ -660,6 +595,8 @@ def main():
         ctypes.windll.user32.MessageBoxW(0, msg, "Missing API Key", 0x30)
 
     icon = pystray.Icon(APP_NAME, Image.new("RGB", (64, 64), "teal"), APP_NAME, menu=_build_tray_menu())
+    _TRAY_ICON = icon
+    _install_tray_click_policy(icon)
 
     set_app_icon(icon)
     clear_reference_state(source="startup", status_message="REF CLEARED ON STARTUP")

@@ -11,10 +11,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "api_key": "",
     "model": MODEL,
     "available_models": [MODEL, "gpt-4o-mini"],
-    "run_hotkey": "ctrl+shift+x",
-    "star_hotkey": "ctrl+shift+s",
-    "quit_hotkey": "ctrl+shift+q",
-    "cycle_model_hotkey": "ctrl+shift+m",
     "temperature": 0.0,
     "request_timeout": 25,
     "retries": 1,
@@ -76,18 +72,6 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     if normalized.get("available_models") != available_models:
         normalized["available_models"] = available_models
-
-    cycle_hotkey = str(normalized.get("cycle_model_hotkey", "") or "").strip().lower()
-    if not cycle_hotkey:
-        cycle_hotkey = str(DEFAULT_CONFIG["cycle_model_hotkey"])
-    if normalized.get("cycle_model_hotkey") != cycle_hotkey:
-        normalized["cycle_model_hotkey"] = cycle_hotkey
-
-    for hk in ("run_hotkey", "star_hotkey", "quit_hotkey"):
-        if hk in normalized:
-            v = str(normalized.get(hk, "") or "").strip().lower()
-            if v and normalized.get(hk) != v:
-                normalized[hk] = v
     return normalized
 
 
