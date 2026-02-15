@@ -59,6 +59,12 @@ STAR_OCR_PROMPT = (
     "Return plain text only."
 )
 
+STAR_VISUAL_SUMMARY_PROMPT = (
+    "Describe the image in one concise sentence for a reference badge.\n"
+    "Focus on the main visual content only.\n"
+    "No preface, no markdown."
+)
+
 STARRED_CONTEXT_GUIDE = "Use the STARRED reference context below as high-priority background.\nThen solve only the current problem.\n"
 
 
@@ -78,6 +84,7 @@ def _default_reference_meta() -> Dict[str, Any]:
         "reference_type": None,
         "text_path": "",
         "image_path": "",
+        "reference_summary": "",
     }
 
 
@@ -85,6 +92,7 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     meta = dict(raw_meta or {})
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
+    reference_summary = str(meta.get("reference_summary", "") or "")
 
     # Backward compatibility for older STAR schema.
     if "enabled" in meta or "mode" in meta:
@@ -103,12 +111,14 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
 
     if not reference_active:
         reference_type = None
+        reference_summary = ""
 
     return {
         "reference_active": reference_active,
         "reference_type": reference_type,
         "text_path": str(meta.get("text_path", "") or ""),
         "image_path": str(meta.get("image_path", "") or ""),
+        "reference_summary": reference_summary,
     }
 
 
@@ -143,8 +153,37 @@ def _clear_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
         "reference_type": None,
         "text_path": "",
         "image_path": "",
+        "reference_summary": "",
     })
     return meta
+
+
+def clear_reference_state(source: str, status_message: Optional[str] = None) -> None:
+    try:
+        meta = load_starred_meta()
+    except Exception as e:
+        log_telemetry("ref_clear_error", {"source": source, "error": str(e)})
+        meta = _default_reference_meta()
+
+    _clear_reference(meta)
+    try:
+        save_starred_meta(meta)
+    except Exception as e:
+        log_telemetry("ref_clear_error", {"source": source, "error": str(e)})
+
+    set_reference_active(False)
+    log_telemetry("ref_clear", {"source": source})
+    if status_message:
+        set_status(status_message)
+
+
+def preview_text(text: str, max_chars: int = 140) -> str:
+    normalized = " ".join(str(text or "").split())
+    if len(normalized) <= max_chars:
+        return normalized
+    if max_chars <= 3:
+        return normalized[:max_chars]
+    return normalized[: max_chars - 3].rstrip() + "..."
 
 
 def _can_assign_reference(meta: Dict[str, Any]) -> bool:
@@ -158,6 +197,38 @@ def image_to_base64_png(img: Image.Image) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+def _summarize_visual_reference(client: OpenAI, model_name: str, img_b64: str, timeout: int) -> str:
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": STAR_VISUAL_SUMMARY_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{img_b64}"}]},
+    ]
+    try:
+        summary = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=timeout,
+            temperature=0.0,
+            max_output_tokens=64,
+        ).strip()
+        summary = preview_text(summary, 140)
+        if not summary:
+            log_telemetry("summary_generation_error", {"type": REFERENCE_TYPE_IMG, "error": "empty_summary"})
+            return ""
+
+        cut_idx = -1
+        for mark in (".", "!", "?"):
+            idx = summary.find(mark)
+            if idx != -1 and (cut_idx == -1 or idx < cut_idx):
+                cut_idx = idx
+        if cut_idx != -1 and cut_idx + 1 < len(summary):
+            summary = summary[: cut_idx + 1].strip()
+        return summary
+    except Exception as e:
+        log_telemetry("summary_generation_error", {"type": REFERENCE_TYPE_IMG, "error": str(e)})
+        return ""
 
 
 def _responses_text(
@@ -252,6 +323,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
     meta = load_starred_meta()
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
+    reference_summary = preview_text(str(meta.get("reference_summary", "") or ""), 140)
     set_reference_active(reference_active)
     reference_text = ""
     reference_img_b64 = ""
@@ -281,6 +353,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 set_reference_active(False)
                 set_status("REF invalid: empty TEXT source. REF CLEARED")
                 return
+            if not reference_summary:
+                reference_summary = preview_text(reference_text, 140)
         elif reference_type == REFERENCE_TYPE_IMG:
             ip = str(meta.get("image_path", "") or "")
             if not ip or not os.path.exists(ip):
@@ -346,7 +420,10 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         return
 
     if reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        out = f"[REF {reference_type}]\n{out}"
+        if reference_summary:
+            out = f"* REF {reference_type}: {reference_summary}\n{out}"
+        else:
+            out = f"* REF {reference_type}\n{out}"
 
     ok = safe_clipboard_write(out)
     if ok:
@@ -360,6 +437,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 
 def toggle_star_worker(client: OpenAI) -> None:
     cfg = get_config()
+    model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
     meta = load_starred_meta()
 
     # Strict toggle behavior: active -> clear only (no parse/overwrite in same action).
@@ -390,7 +468,7 @@ def toggle_star_worker(client: OpenAI) -> None:
             ]
             label = _responses_text(
                 client=client,
-                model_name=cfg.get("model", MODEL),
+                model_name=model_name,
                 input_payload=classify_payload,
                 timeout=int(cfg.get("classify_timeout", 8)),
                 temperature=0.0,
@@ -406,7 +484,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                 ]
                 ocr_text = _responses_text(
                     client=client,
-                    model_name=cfg.get("model", MODEL),
+                    model_name=model_name,
                     input_payload=ocr_payload,
                     timeout=int(cfg.get("ocr_timeout", 12)),
                     temperature=0.0,
@@ -419,30 +497,41 @@ def toggle_star_worker(client: OpenAI) -> None:
                 text_path = os.path.join(app_home_dir(), STARRED_TEXT_FILE)
                 with open(text_path, "w", encoding="utf-8") as f:
                     f.write(ocr_text)
+                summary = preview_text(ocr_text, 140) or "text reference"
 
                 meta.update({
                     "reference_active": True,
                     "reference_type": REFERENCE_TYPE_TEXT,
                     "text_path": text_path,
                     "image_path": "",
+                    "reference_summary": summary,
                 })
                 save_starred_meta(meta)
                 set_reference_active(True)
-                set_status("REF = TEXT")
+                log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
+                set_status(f"REF SET TEXT ASSUMED: {summary}")
             elif "VISUAL" in label:
                 img_dir = _starred_base_dir()
                 img_path = os.path.join(img_dir, STARRED_IMG_FILE)
                 img.save(img_path, format="PNG")
+                summary = _summarize_visual_reference(
+                    client=client,
+                    model_name=model_name,
+                    img_b64=img_b64,
+                    timeout=int(cfg.get("classify_timeout", 8)),
+                ) or "visual reference"
 
                 meta.update({
                     "reference_active": True,
                     "reference_type": REFERENCE_TYPE_IMG,
                     "text_path": "",
                     "image_path": img_path,
+                    "reference_summary": summary,
                 })
                 save_starred_meta(meta)
                 set_reference_active(True)
-                set_status("REF = IMG")
+                log_telemetry("ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
+                set_status(f"REF SET IMG ASSUMED: {summary}")
             else:
                 set_status(f"REF assign failed: classifier returned '{label or 'EMPTY'}'")
             return
@@ -461,14 +550,17 @@ def toggle_star_worker(client: OpenAI) -> None:
         text_path = os.path.join(app_home_dir(), STARRED_TEXT_FILE)
         with open(text_path, "w", encoding="utf-8") as f:
             f.write(text)
+        summary = preview_text(text, 140) or "text reference"
         meta.update({
             "reference_active": True,
             "reference_type": REFERENCE_TYPE_TEXT,
             "text_path": text_path,
             "image_path": "",
+            "reference_summary": summary,
         })
         save_starred_meta(meta)
         set_reference_active(True)
-        set_status("REF = TEXT")
+        log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
+        set_status(f"REF SET TEXT ASSUMED: {summary}")
     else:
         set_status("REF assign failed: no image/text in clipboard")
