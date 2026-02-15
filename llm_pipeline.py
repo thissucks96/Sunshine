@@ -712,14 +712,14 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         else:
             out = f"* REF {reference_type}\n{out}"
 
-    final_block = _extract_final_answer_block(out)
-    if final_block:
-        # Entry 1: original full result. Entry 2: parsed FINAL ANSWER block only.
+    final_text = _extract_final_answer_text(out)
+    if final_text:
+        # Entry 1: original full result. Entry 2: parsed final-answer text (no header).
         settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.6))
         wrote_full = _clipboard_write_retry(out)
         if wrote_full:
             time.sleep(max(0.25, settle_sec))
-        wrote_final = _clipboard_write_retry(final_block)
+        wrote_final = _clipboard_write_retry(final_text)
         ok = wrote_full and wrote_final
     else:
         ok = _clipboard_write_retry(out)
