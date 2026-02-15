@@ -37,6 +37,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "status_notify_max_chars": 72,
     "status_notify_clear_sec": 1.1,
     "status_notify_title": "SNS",
+    # Status-to-clipboard mirroring is opt-in; default off to avoid clobbering solve outputs.
+    "status_copy_to_clipboard": False,
 
     # clipboard history timing (seconds between full and final-answer writes)
     "clipboard_history_settle_sec": 0.6,
@@ -139,6 +141,12 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     notify_enabled = bool(normalized.get("status_notify_enabled", DEFAULT_CONFIG["status_notify_enabled"]))
     if normalized.get("status_notify_enabled") != notify_enabled:
         normalized["status_notify_enabled"] = notify_enabled
+
+    status_copy_to_clipboard = bool(
+        normalized.get("status_copy_to_clipboard", DEFAULT_CONFIG["status_copy_to_clipboard"])
+    )
+    if normalized.get("status_copy_to_clipboard") != status_copy_to_clipboard:
+        normalized["status_copy_to_clipboard"] = status_copy_to_clipboard
     return normalized
 
 
@@ -167,8 +175,16 @@ def load_config() -> Dict[str, Any]:
             _save_config_unlocked(cfg)
             return cfg
 
-        with open(p, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            if not isinstance(cfg, dict):
+                raise ValueError("config root must be an object")
+        except Exception:
+            # Recover from malformed/partial config writes by resetting to defaults.
+            cfg = _normalize_config(dict(DEFAULT_CONFIG))
+            _save_config_unlocked(cfg)
+            return cfg
 
         changed = False
         for k, v in DEFAULT_CONFIG.items():

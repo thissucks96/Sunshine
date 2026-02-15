@@ -169,7 +169,8 @@ def _model_name_matches(requested_model: str, response_model: str) -> bool:
     if not req or not got:
         # Do not hard-fail when response metadata is missing.
         return True
-    return got == req or got.startswith(req + "-") or req.startswith(got + "-")
+    # Accept exact model or provider suffix variants of the requested model only.
+    return got == req or got.startswith(req + "-")
 
 
 def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, require_match: bool = True) -> tuple[bool, str]:

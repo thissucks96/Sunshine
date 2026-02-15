@@ -116,9 +116,12 @@ def _normalize_star_label(raw: str) -> str:
         ("IMAGE", "VISUAL"),
         ("GRAPH", "VISUAL"),
     ):
-        idx = s.find(token)
-        if idx != -1:
-            hits.append((idx, label))
+        for m in re.finditer(rf"\b{re.escape(token)}\b", s):
+            prefix = s[max(0, m.start() - 10):m.start()]
+            # Ignore explicitly negated labels like "NOT TEXTUAL".
+            if re.search(r"\bNOT\s*$", prefix):
+                continue
+            hits.append((m.start(), label))
     if not hits:
         return ""
     hits.sort(key=lambda x: x[0])
@@ -695,31 +698,38 @@ def _maybe_enforce_domain_range_intervals(out: str) -> str:
     final_text = _section_between(out, "FINAL ANSWER")
     if not final_text:
         return out
-    final_low = final_text.lower()
-
-    domain_all_reals = bool(
-        re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low, flags=re.IGNORECASE)
-    )
-    range_all_reals = bool(
-        re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low, flags=re.IGNORECASE)
-    )
-    if not domain_all_reals and not range_all_reals:
+    final_lines = [ln.strip() for ln in final_text.splitlines() if ln.strip()]
+    if not final_lines:
         return out
 
-    compact_lines = []
-    if domain_all_reals:
-        compact_lines.append("Domain: (-∞, ∞) (All Real Numbers)")
-    if range_all_reals:
-        compact_lines.append("Range: (-∞, ∞) (All Real Numbers)")
+    any_rewrite = False
+    rewritten_lines: List[str] = []
+    for line in final_lines:
+        low = line.lower()
+        domain_all_reals = bool(
+            re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", low, flags=re.IGNORECASE)
+        )
+        range_all_reals = bool(
+            re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", low, flags=re.IGNORECASE)
+        )
+        if domain_all_reals:
+            rewritten_lines.append("Domain: (-∞, ∞) (All Real Numbers)")
+            any_rewrite = True
+            continue
+        if range_all_reals:
+            rewritten_lines.append("Range: (-∞, ∞) (All Real Numbers)")
+            any_rewrite = True
+            continue
+        rewritten_lines.append(line)
 
-    if not compact_lines:
+    if not any_rewrite:
         return out
 
-    # Canonicalize FINAL ANSWER block to prevent duplicated domain/range lines.
+    rebuilt_final = "\n".join(rewritten_lines)
     if "FINAL ANSWER:" in out:
         head, _sep, _tail = out.partition("FINAL ANSWER:")
-        return head.rstrip() + "\nFINAL ANSWER:\n" + "\n".join(compact_lines)
-    return out.rstrip() + "\nFINAL ANSWER:\n" + "\n".join(compact_lines)
+        return head.rstrip() + "\nFINAL ANSWER:\n" + rebuilt_final
+    return out.rstrip() + "\nFINAL ANSWER:\n" + rebuilt_final
 
 
 def _maybe_compact_discrete_domain_range(out: str) -> str:
@@ -931,19 +941,26 @@ def toggle_star_worker(client: OpenAI) -> None:
             if not label:
                 fallback_model = str(cfg.get("reference_classifier_model", "gpt-4o-mini") or "").strip()
                 if fallback_model and fallback_model != model_name:
-                    fallback_raw = _responses_text(
-                        client=client,
-                        model_name=fallback_model,
-                        input_payload=classify_payload,
-                        timeout=int(cfg.get("classify_timeout", 8)),
-                        temperature=0.0,
-                        max_output_tokens=32,
-                    ).strip()
-                    label = _normalize_star_label(fallback_raw)
-                    if label:
+                    try:
+                        fallback_raw = _responses_text(
+                            client=client,
+                            model_name=fallback_model,
+                            input_payload=classify_payload,
+                            timeout=int(cfg.get("classify_timeout", 8)),
+                            temperature=0.0,
+                            max_output_tokens=32,
+                        ).strip()
+                        label = _normalize_star_label(fallback_raw)
+                        if label:
+                            log_telemetry(
+                                "ref_classifier_fallback_model",
+                                {"primary_model": model_name, "fallback_model": fallback_model, "label": label},
+                            )
+                    except Exception as e:
+                        # Continue to OCR fallback instead of aborting REF assignment.
                         log_telemetry(
-                            "ref_classifier_fallback_model",
-                            {"primary_model": model_name, "fallback_model": fallback_model, "label": label},
+                            "ref_classifier_fallback_error",
+                            {"primary_model": model_name, "fallback_model": fallback_model, "error": str(e)},
                         )
 
             # Fallback 2: never fail as EMPTY; infer from OCR availability.
