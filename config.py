@@ -33,6 +33,10 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
     # notifications
     "notify_on_complete": False,
+    "status_notify_enabled": True,
+    "status_notify_max_chars": 72,
+    "status_notify_clear_sec": 1.1,
+    "status_notify_title": "SNS",
 
     # clipboard history timing (seconds between full and final-answer writes)
     "clipboard_history_settle_sec": 0.6,
@@ -108,6 +112,33 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     settle = max(0.25, settle)
     if normalized.get("clipboard_history_settle_sec") != settle:
         normalized["clipboard_history_settle_sec"] = settle
+
+    # Notification presentation tuning (kept small/short by default).
+    try:
+        notify_max_chars = int(normalized.get("status_notify_max_chars", DEFAULT_CONFIG["status_notify_max_chars"]))
+    except Exception:
+        notify_max_chars = int(DEFAULT_CONFIG["status_notify_max_chars"])
+    notify_max_chars = max(24, min(120, notify_max_chars))
+    if normalized.get("status_notify_max_chars") != notify_max_chars:
+        normalized["status_notify_max_chars"] = notify_max_chars
+
+    try:
+        notify_clear_sec = float(normalized.get("status_notify_clear_sec", DEFAULT_CONFIG["status_notify_clear_sec"]))
+    except Exception:
+        notify_clear_sec = float(DEFAULT_CONFIG["status_notify_clear_sec"])
+    notify_clear_sec = max(0.2, min(5.0, notify_clear_sec))
+    if normalized.get("status_notify_clear_sec") != notify_clear_sec:
+        normalized["status_notify_clear_sec"] = notify_clear_sec
+
+    notify_title = str(normalized.get("status_notify_title", DEFAULT_CONFIG["status_notify_title"]) or "").strip()
+    if not notify_title:
+        notify_title = str(DEFAULT_CONFIG["status_notify_title"])
+    if normalized.get("status_notify_title") != notify_title:
+        normalized["status_notify_title"] = notify_title
+
+    notify_enabled = bool(normalized.get("status_notify_enabled", DEFAULT_CONFIG["status_notify_enabled"]))
+    if normalized.get("status_notify_enabled") != notify_enabled:
+        normalized["status_notify_enabled"] = notify_enabled
     return normalized
 
 

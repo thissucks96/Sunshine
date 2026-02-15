@@ -182,9 +182,27 @@ def mark_prompt_success() -> None:
 
 def show_notification(msg: str, title: str = "SunnyNotSummer") -> None:
     global _APP_ICON
+    cfg = get_config()
+    if not bool(cfg.get("status_notify_enabled", True)):
+        return
     if _APP_ICON and getattr(_APP_ICON, "HAS_NOTIFICATION", False):
         try:
-            _APP_ICON.notify(msg, title=title)
+            max_chars = int(cfg.get("status_notify_max_chars", 72))
+            compact_msg = " ".join(str(msg or "").split())
+            if len(compact_msg) > max_chars:
+                compact_msg = compact_msg[: max_chars - 3].rstrip() + "..."
+            notify_title = str(cfg.get("status_notify_title", "SNS") or "SNS").strip()
+            _APP_ICON.notify(compact_msg, title=notify_title)
+            clear_sec = float(cfg.get("status_notify_clear_sec", 1.1))
+            if clear_sec > 0 and hasattr(_APP_ICON, "remove_notification"):
+                def _clear():
+                    time.sleep(max(0.2, min(clear_sec, 5.0)))
+                    try:
+                        _APP_ICON.remove_notification()
+                    except Exception:
+                        pass
+
+                threading.Thread(target=_clear, daemon=True).start()
         except Exception:
             pass
 
