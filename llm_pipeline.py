@@ -292,6 +292,21 @@ def _summarize_visual_reference(client: OpenAI, model_name: str, img_b64: str, t
         return ""
 
 
+def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
+    t = " ".join(str(ocr_text or "").split())
+    low = t.lower()
+    if not low:
+        return ""
+
+    if any(k in low for k in ("domain", "range", "graphed", "graph", "coordinate plane", "x-axis", "y-axis")):
+        return "graph on a coordinate plane"
+    if any(k in low for k in ("| x |", "f(x)", "k(x)", "table below", "table of values", "x:", "y:")):
+        return "table of function values"
+    if any(k in low for k in ("solve", "equation", "inequality", "function")):
+        return "math problem screenshot"
+    return preview_text(t, 140)
+
+
 def _responses_text(
     client: OpenAI,
     model_name: str,
@@ -1030,7 +1045,45 @@ def toggle_star_worker(client: OpenAI) -> None:
                     model_name=model_name,
                     img_b64=img_b64,
                     timeout=int(cfg.get("classify_timeout", 8)),
-                ) or "visual reference"
+                )
+
+                if not summary:
+                    fallback_summary_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip()
+                    if fallback_summary_model and fallback_summary_model != model_name:
+                        summary = _summarize_visual_reference(
+                            client=client,
+                            model_name=fallback_summary_model,
+                            img_b64=img_b64,
+                            timeout=int(cfg.get("classify_timeout", 8)),
+                        )
+                        if summary:
+                            log_telemetry(
+                                "ref_summary_fallback_model",
+                                {"primary_model": model_name, "fallback_model": fallback_summary_model},
+                            )
+
+                if not summary:
+                    ocr_probe_img = preprocess_for_ocr(img)
+                    ocr_probe_b64 = image_to_base64_png(ocr_probe_img)
+                    ocr_probe_payload = [
+                        {"role": "system", "content": [{"type": "input_text", "text": STAR_OCR_PROMPT}]},
+                        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{ocr_probe_b64}"}]},
+                    ]
+                    try:
+                        ocr_probe_text = _responses_text(
+                            client=client,
+                            model_name=model_name,
+                            input_payload=ocr_probe_payload,
+                            timeout=int(cfg.get("ocr_timeout", 12)),
+                            temperature=0.0,
+                            max_output_tokens=600,
+                        ).strip()
+                    except Exception as e:
+                        log_telemetry("ref_summary_ocr_probe_error", {"error": str(e)})
+                        ocr_probe_text = ""
+                    summary = _guess_visual_summary_from_ocr_text(ocr_probe_text)
+
+                summary = summary or "visual reference"
 
                 meta.update({
                     "reference_active": True,

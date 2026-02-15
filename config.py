@@ -23,6 +23,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # classifier/ocr helper timeouts
     "classify_timeout": 8,
     "ocr_timeout": 12,
+    # Stable vision model for REF visual-summary fallback.
+    "reference_summary_model": "gpt-4o-mini",
 
     # behavior
     "debug": False,
@@ -147,6 +149,14 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     if normalized.get("status_copy_to_clipboard") != status_copy_to_clipboard:
         normalized["status_copy_to_clipboard"] = status_copy_to_clipboard
+
+    reference_summary_model = str(
+        normalized.get("reference_summary_model", DEFAULT_CONFIG["reference_summary_model"]) or ""
+    ).strip()
+    if not reference_summary_model:
+        reference_summary_model = str(DEFAULT_CONFIG["reference_summary_model"])
+    if normalized.get("reference_summary_model") != reference_summary_model:
+        normalized["reference_summary_model"] = reference_summary_model
     return normalized
 
 
