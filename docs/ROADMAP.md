@@ -25,5 +25,16 @@
 - Dependency churn.
 - Broad UI redesign.
 
+## Feature Intake & Decision Gate
+- New CEO-requested features should be classified by engineering before implementation:
+  - Recommended
+  - Risky but doable
+  - Not recommended now
+- Each proposal should include:
+  - Risk/impact summary
+  - Better alternative (if any)
+  - Smallest safe implementation slice
+- Prefer shipping reversible, low-risk increments before broader redesign.
+
 ## Last Updated
 - 2026-02-15

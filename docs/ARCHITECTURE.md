@@ -41,5 +41,14 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - Keep formatting deterministic and concise.
 - Avoid broad refactors without explicit approval.
 
+## Governance Model
+- Product direction is CEO-driven (feature intent and business priority).
+- Technical execution is senior-dev-driven (risk, sequencing, and implementation safety).
+- For major feature requests, apply a decision gate before coding:
+  - Recommended
+  - Risky but doable
+  - Not recommended now
+- If implementation proceeds despite risk, choose the smallest reversible change that preserves reliability.
+
 ## Last Updated
 - 2026-02-15
