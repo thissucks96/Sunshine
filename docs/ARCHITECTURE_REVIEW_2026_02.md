@@ -6,9 +6,13 @@ Baseline audit of current runtime behavior, reliability hardening, and known rem
 ## What Is Working
 - Tray-driven solve and REF workflows are stable.
 - Config persistence and runtime cache behavior are consistent.
-- Model switching includes probe validation before activation status.
+- Tray/cycle model switching includes probe validation before activation status.
 - REF classifier EMPTY path now has fallback handling.
 - Output normalization is more deterministic than earlier iterations.
+- `AUTO` model menu item is present as a placeholder for future routing.
+
+## Accuracy Notes
+- Startup and "Refresh Model List" model announcements are currently not probe-gated.
 
 ## Key Risks Still Open
 - Close-path consistency: ensure all exit paths enforce the same REF clear behavior if required by policy.

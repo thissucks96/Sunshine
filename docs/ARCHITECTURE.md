@@ -19,7 +19,9 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - REF flow:
   - Toggle STAR -> classify clipboard image as text/visual (with fallbacks) -> persist reference meta + summary -> inject reference context into solve calls when active.
 - Model flow:
-  - User selects/cycles model -> probe model call validates runtime availability -> persist config + announce active model.
+  - Tray selection and cycle hotkey use probe validation before persisting/announcing active model.
+  - Startup and "Refresh Model List" announce active model from config without a probe call.
+  - `AUTO` exists in the tray as a placeholder entry; dynamic routing is not active yet.
 
 ## State & Persistence
 - Config: `config.json` managed by `config.py`.
