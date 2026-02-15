@@ -302,8 +302,14 @@ def _responses_text(
         for out_item in resp.output:
             if getattr(out_item, "type", "") == "message":
                 for c in getattr(out_item, "content", []):
-                    if getattr(c, "type", "") == "output_text":
-                        pieces.append(c.text)
+                    ctype = str(getattr(c, "type", "") or "").lower()
+                    ctext = getattr(c, "text", None)
+                    if isinstance(ctext, str) and ctext.strip():
+                        # Handle both output_text and text-like content variants.
+                        pieces.append(ctext)
+                    elif ctype == "output_text":
+                        # Keep legacy path for SDK objects exposing output_text content.
+                        pieces.append(str(getattr(c, "text", "") or ""))
     except Exception:
         pass
     return "\n".join(pieces).strip()
@@ -784,10 +790,10 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         reference_img_b64=reference_img_b64,
     )
 
-    raw_output = None
+    raw_output = ""
     for attempt in range(retries + 1):
         try:
-            raw_output = _responses_text(
+            candidate = _responses_text(
                 client=client,
                 model_name=model_name,
                 input_payload=payload,
@@ -795,7 +801,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 temperature=temperature,
                 max_output_tokens=max(16, int(max_output_tokens)),
             )
-            if _needs_graph_domain_range_retry(input_obj, raw_output):
+            if _needs_graph_domain_range_retry(input_obj, candidate):
                 retry_payload = _with_graph_domain_range_retry_hint(payload)
                 log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
                 retry_output = _responses_text(
@@ -807,17 +813,21 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                     max_output_tokens=max(16, int(max_output_tokens)),
                 )
                 if retry_output:
-                    raw_output = retry_output
-            break
+                    candidate = retry_output
+
+            if candidate and candidate.strip():
+                raw_output = candidate
+                break
+
+            log_telemetry("solve_empty_response_retry", {"attempt": attempt + 1, "model": str(model_name)})
+            if attempt == retries:
+                set_status("Empty model response.")
+                return
         except Exception as e:
             log_telemetry("solve_retry", {"attempt": attempt + 1, "error": str(e)})
             if attempt == retries:
                 set_status(f"Solve failed: {e}")
                 return
-
-    if not raw_output:
-        set_status("Empty model response.")
-        return
 
     out = clean_output(apply_safe_symbols(raw_output)).strip()
     # Normalize inline FINAL ANSWER first so downstream section checks are stable.
