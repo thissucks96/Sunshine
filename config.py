@@ -17,8 +17,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "max_output_tokens": 2200,
 
     # image guards
-    "max_image_side": 2200,
-    "max_image_pixels": 4_000_000,
+    "max_image_side": 4096,
+    "max_image_pixels": 16_000_000,
 
     # classifier/ocr helper timeouts
     "classify_timeout": 8,
@@ -72,6 +72,24 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     if normalized.get("available_models") != available_models:
         normalized["available_models"] = available_models
+
+    # Keep image constraints intentionally lax to preserve OCR/plot detail.
+    try:
+        max_side = int(normalized.get("max_image_side", DEFAULT_CONFIG["max_image_side"]))
+    except Exception:
+        max_side = int(DEFAULT_CONFIG["max_image_side"])
+    try:
+        max_pixels = int(normalized.get("max_image_pixels", DEFAULT_CONFIG["max_image_pixels"]))
+    except Exception:
+        max_pixels = int(DEFAULT_CONFIG["max_image_pixels"])
+
+    max_side = max(max_side, int(DEFAULT_CONFIG["max_image_side"]))
+    max_pixels = max(max_pixels, int(DEFAULT_CONFIG["max_image_pixels"]))
+
+    if normalized.get("max_image_side") != max_side:
+        normalized["max_image_side"] = max_side
+    if normalized.get("max_image_pixels") != max_pixels:
+        normalized["max_image_pixels"] = max_pixels
     return normalized
 
 

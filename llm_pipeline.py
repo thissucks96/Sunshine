@@ -3,6 +3,7 @@ import io
 import json
 import base64
 import re
+import time
 from fractions import Fraction
 from typing import Any, Dict, List, Optional, Union
 
@@ -209,7 +210,8 @@ def clear_reference_state(source: str, status_message: Optional[str] = None) -> 
 
 
 def preview_text(text: str, max_chars: int = 140) -> str:
-    normalized = " ".join(str(text or "").split())
+    # Keep badge/status summaries compact and plain.
+    normalized = " ".join(str(text or "").replace("`", "").split())
     if len(normalized) <= max_chars:
         return normalized
     if max_chars <= 3:
@@ -353,6 +355,131 @@ def clean_output(text: str) -> str:
     return "\n".join(cleaned).strip()
 
 
+def _extract_final_answer_text(out: str) -> str:
+    lines = (out or "").splitlines()
+    start_idx = -1
+    inline_text = ""
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.upper().startswith("FINAL ANSWER:"):
+            start_idx = i
+            inline_text = stripped[len("FINAL ANSWER:"):].strip()
+            break
+
+    if start_idx == -1:
+        return ""
+
+    parts = []
+    if inline_text:
+        parts.append(inline_text)
+    for line in lines[start_idx + 1:]:
+        s = line.strip()
+        if s:
+            parts.append(s)
+
+    # De-duplicate repeated final-answer lines while preserving order.
+    unique_parts: List[str] = []
+    seen = set()
+    for p in parts:
+        if p not in seen:
+            seen.add(p)
+            unique_parts.append(p)
+
+    def _is_bare_answer_line(s: str) -> bool:
+        t = s.strip()
+        if re.fullmatch(r"\{[^{}]+\}", t):
+            return True
+        if re.fullmatch(r"[\(\[][^\[\]\(\)]+[\)\]]", t):
+            return True
+        if re.fullmatch(r"-?\d+(?:\.\d+)?(?:/\d+)?", t):
+            return True
+        if re.fullmatch(r"\([^)]+\)(?:\s*,\s*\([^)]+\))*", t):
+            return True
+        return False
+
+    # If both a verbose labeled line and the same bare value are present, keep the bare value only.
+    bare_lines = [p for p in unique_parts if _is_bare_answer_line(p)]
+    if len(bare_lines) == 1 and len(unique_parts) > 1:
+        bare = bare_lines[0]
+        if any(bare in p and p != bare for p in unique_parts):
+            return bare
+
+    result = "\n".join(unique_parts).strip()
+    # Keep final-only payload concise for common domain/range answer lines.
+    m = re.fullmatch(r"(?:domain|range)\s*[:=]\s*(.+)", result, flags=re.IGNORECASE)
+    if m:
+        value = m.group(1).strip()
+        value = re.sub(r"\s*\((?:specific|discrete|finite)\s+values?\)\s*$", "", value, flags=re.IGNORECASE)
+        return value.strip()
+    return result
+
+
+def _extract_final_answer_block(out: str) -> str:
+    text = str(out or "").strip()
+    if not text:
+        return ""
+
+    lines = text.splitlines()
+    start_idx = -1
+    inline_text = ""
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.upper().startswith("FINAL ANSWER:"):
+            start_idx = i
+            inline_text = stripped[len("FINAL ANSWER:"):].strip()
+            break
+    if start_idx == -1:
+        return ""
+
+    parts = []
+    if inline_text:
+        parts.append(inline_text)
+    for line in lines[start_idx + 1:]:
+        s = line.strip()
+        if s:
+            parts.append(s)
+    if not parts:
+        return "FINAL ANSWER:"
+    return "FINAL ANSWER:\n" + "\n".join(parts).strip()
+
+
+def _clipboard_write_retry(text: str, attempts: int = 4, delay_sec: float = 0.08) -> bool:
+    for _ in range(max(1, attempts)):
+        if safe_clipboard_write(text):
+            return True
+        time.sleep(max(0.01, delay_sec))
+    return False
+
+
+def _ensure_final_answer_block(out: str) -> str:
+    text = str(out or "").strip()
+    if not text:
+        return text
+    if re.search(r"^\s*FINAL ANSWER\s*:", text, flags=re.IGNORECASE | re.MULTILINE):
+        return text
+
+    lines = [ln.rstrip() for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return text
+
+    # Prefer explicit answer-like lines for fallback FINAL ANSWER synthesis.
+    candidate = ""
+    answer_like = (
+        r"(domain|range|points to plot|no solution|all real numbers|\{.*\}|\(.*\)|=)"
+    )
+    for ln in reversed(lines):
+        s = ln.strip()
+        if s.upper() == "WORK:":
+            continue
+        if re.search(answer_like, s, flags=re.IGNORECASE):
+            candidate = s
+            break
+    if not candidate:
+        candidate = lines[-1].strip()
+
+    return text + "\nFINAL ANSWER:\n" + candidate
+
+
 def _format_fraction(fr: Fraction) -> str:
     if fr.denominator == 1:
         return str(fr.numerator)
@@ -461,6 +588,15 @@ def _maybe_enforce_domain_range_intervals(out: str) -> str:
     return out.rstrip() + "\nFINAL ANSWER:\n" + "\n".join(compact_lines)
 
 
+def _maybe_compact_discrete_domain_range(out: str) -> str:
+    # For finite-set table answers, keep FINAL ANSWER concise (no extra qualifiers).
+    return re.sub(
+        r"(?im)^(\s*(?:domain|range)\s*:\s*\{[^{}\n]+\})\s*\((?:specific|discrete|finite)\s+values?\)\s*$",
+        r"\1",
+        out,
+    )
+
+
 def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
     cfg = get_config()
     retries = int(cfg.get("retries", 1))
@@ -566,6 +702,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
     out = clean_output(apply_safe_symbols(raw_output)).strip()
     out = _maybe_enforce_points_to_plot(out)
     out = _maybe_enforce_domain_range_intervals(out)
+    out = _maybe_compact_discrete_domain_range(out)
+    out = _ensure_final_answer_block(out)
     if not out:
         set_status("Model returned empty output.")
         return
@@ -576,7 +714,18 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         else:
             out = f"* REF {reference_type}\n{out}"
 
-    ok = safe_clipboard_write(out)
+    final_block = _extract_final_answer_block(out)
+    if final_block:
+        # Populate clipboard history with full output first, then make final-only current.
+        # Keep a settle delay so history managers can capture both entries.
+        settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.35))
+        wrote_full = _clipboard_write_retry(out)
+        if wrote_full:
+            time.sleep(max(0.12, settle_sec))
+        wrote_final = _clipboard_write_retry(final_block)
+        ok = wrote_full and wrote_final
+    else:
+        ok = _clipboard_write_retry(out)
     if ok:
         mark_prompt_success()
     notify_on_complete = bool(cfg.get("notify_on_complete", False))
