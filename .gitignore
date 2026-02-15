@@ -1,0 +1,61 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+
+# =========================
+# Build / Packaging
+# =========================
+build/
+dist/
+*.spec.bak
+*.exe
+*.zip
+*.whl
+
+# =========================
+# Runtime / App Output
+# =========================
+solver_telemetry.jsonl
+*.log
+REFERENCE_IMG/
+STARRED.txt
+STARRED_META.json
+
+# =========================
+# Local Config / Secrets
+# =========================
+config.json
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Python Tooling
+# =========================
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Jupyter (if ever used)
+# =========================
+.ipynb_checkpoints/
