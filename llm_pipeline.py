@@ -32,17 +32,29 @@ REFERENCE_TYPE_TEXT = "TEXT"
 
 SYSTEM_PROMPT = (
     "You are solving a math problem.\n"
-    "Output MUST be plain text only. No markdown. No LaTeX.\n"
-    "Use this exact structure:\n"
-    "<raw math only, no label>\n"
+    "Output plain text only. No markdown. No LaTeX.\n"
+    "Format contract:\n"
+    "- Produce exactly one WORK block.\n"
+    "- Produce exactly one FINAL ANSWER block.\n"
+    "- Do not output DETECTED_INPUT or Q:.\n"
+    "If exactly one value is requested, output:\n"
+    "<raw problem text only, no label>\n"
     "WORK:\n"
-    "<minimal symbolic steps>\n"
+    "<minimal symbolic/reading steps>\n"
     "FINAL ANSWER: <answer>\n"
-    "Rules:\n"
-    "- Do not include 'DETECTED_INPUT:' or 'Q:'.\n"
-    "- First line must be only the detected expression/equation.\n"
-    "- Keep WORK concise.\n"
-    "- For inequalities, final should be interval notation.\n"
+    "If multiple values are requested, output:\n"
+    "<raw problem text only, no label>\n"
+    "WORK:\n"
+    "<concise steps grouped by item, in original order>\n"
+    "FINAL ANSWER:\n"
+    "<one line per requested item in original order, format: <item label> = <value>>\n"
+    "Graph-reading rules:\n"
+    "- For graph-based values (for example f(2)), read from axes/grid and interpolate proportionally between gridlines.\n"
+    "- Do not snap to nearest integer unless the plotted point is exactly on that integer level.\n"
+    "- If read is approximate, use a concise decimal estimate.\n"
+    "Other rules:\n"
+    "- Preserve original requested-item order exactly.\n"
+    "- For inequalities, use interval notation.\n"
     "- If all reals: FINAL ANSWER: All Real Numbers\n"
     "- If none: FINAL ANSWER: No Solution\n"
 )
@@ -65,7 +77,11 @@ STAR_VISUAL_SUMMARY_PROMPT = (
     "No preface, no markdown."
 )
 
-STARRED_CONTEXT_GUIDE = "Use the STARRED reference context below as high-priority background.\nThen solve only the current problem.\n"
+STARRED_CONTEXT_GUIDE = (
+    "Use STARRED reference as optional context only.\n"
+    "Prioritize the current problem input.\n"
+    "If reference conflicts with current input, trust current input.\n"
+)
 
 
 def _starred_meta_path() -> str:
