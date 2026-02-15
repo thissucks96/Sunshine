@@ -33,6 +33,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 
     # notifications
     "notify_on_complete": False,
+
+    # clipboard history timing (seconds between full and final-answer writes)
+    "clipboard_history_settle_sec": 0.6,
 }
 
 _CONFIG_CACHE: Optional[Dict[str, Any]] = None
@@ -90,6 +93,15 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         normalized["max_image_side"] = max_side
     if normalized.get("max_image_pixels") != max_pixels:
         normalized["max_image_pixels"] = max_pixels
+
+    # Keep enough delay for clipboard history apps to capture two writes.
+    try:
+        settle = float(normalized.get("clipboard_history_settle_sec", DEFAULT_CONFIG["clipboard_history_settle_sec"]))
+    except Exception:
+        settle = float(DEFAULT_CONFIG["clipboard_history_settle_sec"])
+    settle = max(0.25, settle)
+    if normalized.get("clipboard_history_settle_sec") != settle:
+        normalized["clipboard_history_settle_sec"] = settle
     return normalized
 
 

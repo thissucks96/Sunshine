@@ -451,33 +451,31 @@ def _clipboard_write_retry(text: str, attempts: int = 4, delay_sec: float = 0.08
     return False
 
 
-def _ensure_final_answer_block(out: str) -> str:
+def _normalize_final_answer_block(out: str) -> str:
     text = str(out or "").strip()
     if not text:
         return text
-    if re.search(r"^\s*FINAL ANSWER\s*:", text, flags=re.IGNORECASE | re.MULTILINE):
-        return text
 
-    lines = [ln.rstrip() for ln in text.splitlines() if ln.strip()]
-    if not lines:
-        return text
+    lines = text.splitlines()
+    normalized: List[str] = []
+    found_final = False
 
-    # Prefer explicit answer-like lines for fallback FINAL ANSWER synthesis.
-    candidate = ""
-    answer_like = (
-        r"(domain|range|points to plot|no solution|all real numbers|\{.*\}|\(.*\)|=)"
-    )
-    for ln in reversed(lines):
-        s = ln.strip()
-        if s.upper() == "WORK:":
+    for line in lines:
+        stripped = line.strip()
+        if stripped.upper().startswith("FINAL ANSWER:"):
+            found_final = True
+            inline = stripped[len("FINAL ANSWER:"):].strip()
+            normalized.append("FINAL ANSWER:")
+            if inline:
+                normalized.append(inline)
             continue
-        if re.search(answer_like, s, flags=re.IGNORECASE):
-            candidate = s
-            break
-    if not candidate:
-        candidate = lines[-1].strip()
+        normalized.append(line)
 
-    return text + "\nFINAL ANSWER:\n" + candidate
+    # Do not synthesize FINAL ANSWER when model omitted it; avoid duplicate/conflicting tails.
+    if not found_final:
+        return text
+
+    return "\n".join(normalized).strip()
 
 
 def _format_fraction(fr: Fraction) -> str:
@@ -703,7 +701,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
     out = _maybe_enforce_points_to_plot(out)
     out = _maybe_enforce_domain_range_intervals(out)
     out = _maybe_compact_discrete_domain_range(out)
-    out = _ensure_final_answer_block(out)
+    out = _normalize_final_answer_block(out)
     if not out:
         set_status("Model returned empty output.")
         return
@@ -716,12 +714,11 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 
     final_block = _extract_final_answer_block(out)
     if final_block:
-        # Populate clipboard history with full output first, then make final-only current.
-        # Keep a settle delay so history managers can capture both entries.
-        settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.35))
+        # Entry 1: original full result. Entry 2: parsed FINAL ANSWER block only.
+        settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.6))
         wrote_full = _clipboard_write_retry(out)
         if wrote_full:
-            time.sleep(max(0.12, settle_sec))
+            time.sleep(max(0.25, settle_sec))
         wrote_final = _clipboard_write_retry(final_block)
         ok = wrote_full and wrote_final
     else:
