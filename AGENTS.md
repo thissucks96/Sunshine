@@ -121,12 +121,13 @@ Follow it strictly.
   * `docs/ARCHITECTURE.md`
   * or `docs/ROADMAP.md`
 * Treat review documents as audits, not contracts.
+* Do not create a new `ARCHITECTURE_REVIEW_<YYYY_MM>.md` file unless the user explicitly requests updating both `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`.
 
 ---
 
 ## 9) Documentation Awareness (Pre-Task Requirement)
 
-Before beginning any new task, review the following files if they exist:
+At the start of each session and before beginning any new task, review the following files if they exist:
 
 * `docs/ARCHITECTURE.md`
 * `docs/ROADMAP.md`
@@ -151,5 +152,3 @@ This version gives you:
 * No silent architecture drift
 * Clean documentation separation
 * Long-term scalability
-
-This is now a mature governance model, not just a rule sheet.
