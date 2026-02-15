@@ -10,7 +10,7 @@ MODEL = "gpt-4o"
 DEFAULT_CONFIG: Dict[str, Any] = {
     "api_key": "",
     "model": MODEL,
-    "available_models": [MODEL, "gpt-4o-mini", "gpt-5.2"],
+    "available_models": [MODEL, "gpt-4o-mini", "gpt-5-mini", "gpt-5", "gpt-5.2"],
     "temperature": 0.0,
     "request_timeout": 25,
     "retries": 1,
