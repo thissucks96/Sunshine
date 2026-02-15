@@ -528,18 +528,9 @@ def _on_tray_refresh_model_list(icon, _item):
     _refresh_tray_menu(icon)
 
 
-def _on_tray_model_x_test(_icon, _item):
-    def _run():
-        # Intentional mismatch test: should fail if model verification is working.
-        expected_model = "gpt-5-mini"
-        called_model = "gpt-4o"
-        ok, reason = _probe_model_runtime(expected_model, call_model=called_model, require_match=True)
-        if ok:
-            set_status(f"MODEL X TEST UNEXPECTED PASS: expected {expected_model}, called {called_model}")
-        else:
-            set_status(f"MODEL X TEST FAIL (EXPECTED): {reason}")
-
-    threading.Thread(target=_run, daemon=True).start()
+def _on_tray_auto_model_placeholder(_icon, _item):
+    # Placeholder slot for future dynamic model routing.
+    set_status("AUTO routing placeholder")
 
 
 def _is_model_checked(model_name: str) -> bool:
@@ -567,7 +558,8 @@ def _build_tray_menu():
     ref_active = _is_ref_active_session()
     ref_label = "REF ON" if ref_active else "REF OFF"
 
-    model_items = [
+    model_items = [item("AUTO", _on_tray_auto_model_placeholder)]
+    model_items.extend([
         item(
             m,
             _make_model_select_action(m),
@@ -575,9 +567,8 @@ def _build_tray_menu():
             radio=True,
         )
         for m in models
-    ]
+    ])
     model_items.append(item("Refresh Model List", _on_tray_refresh_model_list))
-    model_items.append(item("Model X Test", _on_tray_model_x_test))
 
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
