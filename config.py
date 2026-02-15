@@ -10,7 +10,7 @@ MODEL = "gpt-4o"
 DEFAULT_CONFIG: Dict[str, Any] = {
     "api_key": "",
     "model": MODEL,
-    "available_models": [MODEL, "gpt-4o-mini"],
+    "available_models": [MODEL, "gpt-4o-mini", "gpt-5.2"],
     "temperature": 0.0,
     "request_timeout": 25,
     "retries": 1,
@@ -72,6 +72,12 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     if model_name not in available_models:
         available_models.insert(0, model_name)
+
+    # Ensure default selectable models are always present for tray/runtime switching.
+    for default_model in DEFAULT_CONFIG.get("available_models", []):
+        m = str(default_model or "").strip()
+        if m and m not in available_models:
+            available_models.append(m)
 
     if normalized.get("available_models") != available_models:
         normalized["available_models"] = available_models
