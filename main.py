@@ -163,6 +163,38 @@ def _announce_model_active(model_name: str) -> bool:
     return _verify_model_clipboard(model_name)
 
 
+def _probe_model_runtime(model_name: str) -> tuple[bool, str]:
+    cfg = get_config()
+    api_key = resolve_api_key(cfg)
+    if not api_key:
+        return False, "missing API key"
+
+    timeout = int(cfg.get("request_timeout", 25))
+    probe_timeout = max(5, min(timeout, 12))
+    try:
+        client = OpenAI(api_key=api_key)
+        resp = client.responses.create(
+            model=model_name,
+            input=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
+            temperature=0.0,
+            max_output_tokens=1,
+            timeout=probe_timeout,
+        )
+        # Best-effort telemetry to prove a token-using call hit the requested model.
+        log_telemetry(
+            "model_probe_ok",
+            {
+                "requested_model": model_name,
+                "response_model": str(getattr(resp, "model", "") or ""),
+            },
+        )
+        return True, ""
+    except Exception as e:
+        reason = str(e) or "probe failed"
+        log_telemetry("model_probe_failed", {"requested_model": model_name, "error": reason})
+        return False, reason
+
+
 def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional[Dict[str, object]]:
     try:
         return update_config_values(changes)
@@ -190,6 +222,11 @@ def cycle_model_worker(icon) -> None:
             old_idx = 0
         new_model = models[(old_idx + 1) % len(models)]
 
+        ok_probe, reason = _probe_model_runtime(new_model)
+        if not ok_probe:
+            set_status(f"MODEL CHANGE FAILED: {reason}")
+            return
+
         updated = _persist_config_changes({"model": new_model, "available_models": models}, source="cycle_model")
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
@@ -214,6 +251,11 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
             return
         if target_model not in models:
             set_status(f"MODEL CHANGE FAILED: unknown model '{target_model}'")
+            return
+
+        ok_probe, reason = _probe_model_runtime(target_model)
+        if not ok_probe:
+            set_status(f"MODEL CHANGE FAILED: {reason}")
             return
 
         old_model = _active_model_name(cfg)
