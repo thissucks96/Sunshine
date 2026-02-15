@@ -527,7 +527,30 @@ def _needs_graph_domain_range_retry(input_obj: Union[str, Image.Image], model_te
             "solid point",
         )
     )
-    return not marker_evidence
+    if mentions_exclusion and not marker_evidence:
+        return True
+
+    # Retry when final claims all-reals but WORK describes bounded graph features.
+    final_all_reals = (
+        bool(re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low))
+        or bool(re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low))
+    )
+    bounded_cues = any(
+        k in work_low
+        for k in (
+            "starts at x",
+            "ends at x",
+            "from x",
+            "to x",
+            "maximum",
+            "minimum",
+            "open circle",
+            "closed circle",
+            "endpoint",
+        )
+    )
+    arrow_evidence = "arrow" in work_low or "arrow" in final_low
+    return final_all_reals and bounded_cues and not arrow_evidence
 
 
 def _with_graph_domain_range_retry_hint(payload: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -631,11 +654,17 @@ def _maybe_enforce_domain_range_intervals(out: str) -> str:
     if "domain" not in lower and "range" not in lower:
         return out
 
+    # Only canonicalize from FINAL ANSWER content, not WORK, to avoid false rewrites.
+    final_text = _section_between(out, "FINAL ANSWER")
+    if not final_text:
+        return out
+    final_low = final_text.lower()
+
     domain_all_reals = bool(
-        re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", out, flags=re.IGNORECASE)
+        re.search(r"domain[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low, flags=re.IGNORECASE)
     )
     range_all_reals = bool(
-        re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", out, flags=re.IGNORECASE)
+        re.search(r"range[^\n\r]*(all real numbers|\(-∞,\s*∞\)|\(-inf,\s*inf\))", final_low, flags=re.IGNORECASE)
     )
     if not domain_all_reals and not range_all_reals:
         return out
@@ -781,10 +810,11 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         return
 
     out = clean_output(apply_safe_symbols(raw_output)).strip()
+    # Normalize inline FINAL ANSWER first so downstream section checks are stable.
+    out = _normalize_final_answer_block(out)
     out = _maybe_enforce_points_to_plot(out)
     out = _maybe_enforce_domain_range_intervals(out)
     out = _maybe_compact_discrete_domain_range(out)
-    out = _normalize_final_answer_block(out)
     if not out:
         set_status("Model returned empty output.")
         return
