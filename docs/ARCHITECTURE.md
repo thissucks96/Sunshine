@@ -1,4 +1,26 @@
+# Project State & Execution Context
+
 # SunnyNotSummer Codebase Walkthrough
+
+## Current Stable Anchor
+- Branch: `feature/graph-evidence-validator`
+- Stable Tag: `exam-ready-v1`
+- Latest Commit: `edc730f`
+- Feature Flags Default: All new diagnostic flags OFF
+
+## Session Start Protocol
+- Always run `git status`.
+- Never modify unrelated files.
+- Show `git diff` before commit.
+- No push without explicit approval.
+
+## Rollback Anchors Reference
+- `exam-ready-v1` (`edc730f`)
+- `pre-validator-stable` (`31ece74`)
+- `master-bedrock` (`77bc30b`)
+- `first-graph-success` (`552a7ad`)
+
+---
 
 1 Executive Overview
 SunnyNotSummer is a Windows tray-first clipboard solver that captures text or image input from the clipboard, optionally applies a STAR/REF reference context, sends a constrained prompt to the OpenAI Responses API, post-processes the model output into a deterministic math format, writes results back to clipboard (full result then final answer), and surfaces state through tray icon color, tray notifications, and telemetry. The core runtime is orchestrated in `main.py:733` (`main`), solve/reference logic lives in `llm_pipeline.py:846` (`solve_pipeline`) and `llm_pipeline.py:1074` (`toggle_star_worker`), configuration/state persistence is in `config.py`, and cross-cutting UI/clipboard/telemetry helpers are in `utils.py`.

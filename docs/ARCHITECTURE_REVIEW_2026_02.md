@@ -1,4 +1,26 @@
+# Project State & Execution Context
+
 # SunnyNotSummer Architecture Review - 2026_02
+
+## Current Stable Anchor
+- Branch: `feature/graph-evidence-validator`
+- Stable Tag: `exam-ready-v1`
+- Latest Commit: `edc730f`
+- Feature Flags Default: All new diagnostic flags OFF
+
+## Session Start Protocol
+- Always run `git status`.
+- Never modify unrelated files.
+- Show `git diff` before commit.
+- No push without explicit approval.
+
+## Rollback Anchors Reference
+- `exam-ready-v1` (`edc730f`)
+- `pre-validator-stable` (`31ece74`)
+- `master-bedrock` (`77bc30b`)
+- `first-graph-success` (`552a7ad`)
+
+---
 
 ## Scope
 Repository-level walkthrough refresh and runtime reliability audit aligned to current code in `main.py`, `llm_pipeline.py`, `utils.py`, and `config.py`.
