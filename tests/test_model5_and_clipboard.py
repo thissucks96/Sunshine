@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -126,6 +127,62 @@ class ModelAndClipboardTests(unittest.TestCase):
             utils.set_status(unique_message)
 
         mock_copy.assert_called_with(unique_message)
+
+    def test_cancelled_between_clipboard_writes_skips_final_write(self):
+        writes = []
+        statuses = []
+        cancel = Event()
+
+        def _fake_clipboard_write(text: str, attempts: int = 4, delay_sec: float = 0.08) -> bool:
+            writes.append(text)
+            if len(writes) == 1:
+                cancel.set()
+            return True
+
+        def _fake_responses_text(**_kwargs):
+            return "Problem\nWORK:\nstep\nFINAL ANSWER: 4"
+
+        cfg = {
+            "retries": 0,
+            "request_timeout": 20,
+            "model": "gpt-4o-mini",
+            "temperature": 0.0,
+            "max_output_tokens": 2200,
+            "clipboard_history_settle_sec": 0.6,
+            "notify_on_complete": False,
+            "max_image_side": 4096,
+            "max_image_pixels": 16_000_000,
+        }
+        meta = {
+            "reference_active": False,
+            "reference_type": None,
+            "text_path": "",
+            "image_path": "",
+            "reference_summary": "",
+        }
+
+        with patch.object(llm_pipeline, "get_config", return_value=cfg), patch.object(
+            llm_pipeline, "load_starred_meta", return_value=meta
+        ), patch.object(llm_pipeline, "_responses_text", side_effect=_fake_responses_text), patch.object(
+            llm_pipeline, "_clipboard_write_retry", side_effect=_fake_clipboard_write
+        ), patch.object(
+            llm_pipeline, "mark_prompt_success", return_value=None
+        ), patch.object(
+            llm_pipeline, "set_status", side_effect=statuses.append
+        ), patch.object(
+            llm_pipeline, "set_reference_active", return_value=None
+        ), patch.object(
+            llm_pipeline.time, "sleep", return_value=None
+        ):
+            llm_pipeline.solve_pipeline(
+                client=object(),
+                input_obj="2 + 2 = ?",
+                cancel_event=cancel,
+                request_id="cancel-write-race",
+            )
+
+        self.assertEqual(len(writes), 1)
+        self.assertIn("Solve canceled: model switched.", statuses)
 
 
 if __name__ == "__main__":

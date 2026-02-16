@@ -1047,8 +1047,16 @@ def solve_pipeline(
         # Entry 1: original full result. Entry 2: parsed final-answer text (no header).
         settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.6))
         wrote_full = _clipboard_write_retry(out)
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "between_clipboard_writes"})
+            set_status("Solve canceled: model switched.")
+            return
         if wrote_full:
             time.sleep(max(0.25, settle_sec))
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_final_clipboard"})
+            set_status("Solve canceled: model switched.")
+            return
         wrote_final = _clipboard_write_retry(final_text)
         ok = wrote_full and wrote_final
     else:

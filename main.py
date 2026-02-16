@@ -305,6 +305,9 @@ def cycle_model_worker(icon) -> None:
             old_idx = 0
         new_model = models[(old_idx + 1) % len(models)]
 
+        if old_model != new_model:
+            _cancel_active_solve(f"model_switch_hotkey_preprobe:{old_model}->{new_model}")
+
         ok_probe, reason = _probe_model_runtime(new_model)
         if not ok_probe:
             set_status(f"MODEL CHANGE FAILED: {reason}")
@@ -314,9 +317,6 @@ def cycle_model_worker(icon) -> None:
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
             return
-
-        if old_model != new_model:
-            _cancel_active_solve(f"model_switch_hotkey:{old_model}->{new_model}")
 
         log_telemetry("model_changed", {"old": old_model, "new": new_model, "source": "hotkey"})
         if old_model != new_model:
@@ -331,6 +331,7 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
     with _model_lock:
         cfg = get_config()
         models = _normalize_available_models(cfg)
+        old_model = _active_model_name(cfg)
         target_model = str(model_name or "").strip()
         if not target_model:
             set_status("MODEL CHANGE FAILED: empty model")
@@ -339,19 +340,18 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
             set_status(f"MODEL CHANGE FAILED: unknown model '{target_model}'")
             return
 
+        if old_model != target_model:
+            _cancel_active_solve(f"model_switch_{source}_preprobe:{old_model}->{target_model}")
+
         ok_probe, reason = _probe_model_runtime(target_model)
         if not ok_probe:
             set_status(f"MODEL CHANGE FAILED: {reason}")
             return
 
-        old_model = _active_model_name(cfg)
         updated = _persist_config_changes({"model": target_model, "available_models": models}, source=source)
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
             return
-
-        if old_model != target_model:
-            _cancel_active_solve(f"model_switch_{source}:{old_model}->{target_model}")
 
         if old_model != target_model:
             log_telemetry("model_changed", {"old": old_model, "new": target_model, "source": source})
