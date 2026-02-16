@@ -4,6 +4,7 @@ import json
 import base64
 import re
 import time
+import uuid
 from fractions import Fraction
 from typing import Any, Dict, List, Optional, Union
 
@@ -307,6 +308,31 @@ def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
     return preview_text(t, 140)
 
 
+def _timeout_type_from_exception(exc: Exception) -> str:
+    msg = str(exc or "").lower()
+    if "connect timeout" in msg:
+        return "connect"
+    if "read timeout" in msg:
+        return "read"
+    if "write timeout" in msg:
+        return "write"
+    if "pool timeout" in msg:
+        return "pool"
+    if "request timed out" in msg or "timed out" in msg or "timeout" in msg:
+        return "request"
+    return ""
+
+
+def _exception_payload(exc: Exception) -> Dict[str, Any]:
+    timeout_type = _timeout_type_from_exception(exc)
+    return {
+        "type": type(exc).__name__,
+        "message": str(exc),
+        "is_timeout": bool(timeout_type),
+        "timeout_type": timeout_type,
+    }
+
+
 def _responses_text(
     client: OpenAI,
     model_name: str,
@@ -314,7 +340,13 @@ def _responses_text(
     timeout: int,
     temperature: float,
     max_output_tokens: int,
+    flow_name: str = "responses",
+    request_id: Optional[str] = None,
 ) -> str:
+    rid = str(request_id or f"{flow_name}-{uuid.uuid4().hex[:10]}")
+    req_started_unix = time.time()
+    req_started_mono = time.monotonic()
+    api_attempt = 0
     req = {
         "model": model_name,
         "input": input_payload,
@@ -322,15 +354,64 @@ def _responses_text(
         "max_output_tokens": max(16, int(max_output_tokens)),
         "timeout": timeout,
     }
-    try:
-        resp = client.responses.create(**req)
-    except Exception as e:
-        # Some models (for example certain GPT-5 variants) reject temperature.
-        msg = str(e).lower()
-        if "unsupported parameter" in msg and "temperature" in msg:
-            req.pop("temperature", None)
+    while True:
+        api_attempt += 1
+        call_started_mono = time.monotonic()
+        log_telemetry(
+            "api_request_start",
+            {
+                "request_id": rid,
+                "flow": flow_name,
+                "model": str(model_name),
+                "time_started_unix": req_started_unix,
+                "logical_attempt": 1,
+                "api_attempt": api_attempt,
+                "timeout_sec": timeout,
+                "temperature_included": "temperature" in req,
+            },
+        )
+        try:
             resp = client.responses.create(**req)
-        else:
+            call_elapsed_ms = int((time.monotonic() - call_started_mono) * 1000)
+            log_telemetry(
+                "api_request_complete",
+                {
+                    "request_id": rid,
+                    "flow": flow_name,
+                    "model": str(model_name),
+                    "time_started_unix": req_started_unix,
+                    "time_completed_unix": time.time(),
+                    "time_to_first_byte_ms": None,
+                    "time_completed_ms": call_elapsed_ms,
+                    "retries": max(0, api_attempt - 1),
+                    "timeout_type": "",
+                    "exception_payload": None,
+                },
+            )
+            break
+        except Exception as e:
+            call_elapsed_ms = int((time.monotonic() - call_started_mono) * 1000)
+            payload = _exception_payload(e)
+            log_telemetry(
+                "api_request_error",
+                {
+                    "request_id": rid,
+                    "flow": flow_name,
+                    "model": str(model_name),
+                    "time_started_unix": req_started_unix,
+                    "time_completed_unix": time.time(),
+                    "time_to_first_byte_ms": None,
+                    "time_completed_ms": call_elapsed_ms,
+                    "retries": max(0, api_attempt - 1),
+                    "timeout_type": payload.get("timeout_type", ""),
+                    "exception_payload": payload,
+                },
+            )
+            # Some models (for example certain GPT-5 variants) reject temperature.
+            msg = str(e).lower()
+            if "unsupported parameter" in msg and "temperature" in msg and "temperature" in req:
+                req.pop("temperature", None)
+                continue
             raise
     text = getattr(resp, "output_text", None)
     if text:
