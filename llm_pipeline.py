@@ -104,6 +104,19 @@ STARRED_CONTEXT_GUIDE = (
     "If reference conflicts with current input, trust current input.\n"
 )
 
+GRAPH_EVIDENCE_PROMPT_APPEND = (
+    "For graph problems only, begin WORK with a structured GRAPH_EVIDENCE block:\n"
+    "GRAPH_EVIDENCE:\n"
+    "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
+    "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
+    "  CONFIDENCE: <0.0-1.0>\n"
+    "Inside GRAPH_EVIDENCE do not include the boundary markers WORK, FINAL ANSWER, or [FINAL].\n"
+    "After GRAPH_EVIDENCE, continue normal WORK reasoning.\n"
+)
+
 
 def _normalize_star_label(raw: str) -> str:
     s = " ".join(str(raw or "").upper().split())
@@ -446,9 +459,13 @@ def _build_solve_payload(
     reference_active: bool,
     reference_type: Optional[str],
     reference_text: str,
-    reference_img_b64: str
+    reference_img_b64: str,
+    enable_graph_evidence_parsing: bool = False,
 ) -> List[Dict[str, Any]]:
-    sys_msg = {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]}
+    sys_prompt = SYSTEM_PROMPT
+    if enable_graph_evidence_parsing:
+        sys_prompt = SYSTEM_PROMPT + "\n" + GRAPH_EVIDENCE_PROMPT_APPEND
+    sys_msg = {"role": "system", "content": [{"type": "input_text", "text": sys_prompt}]}
     user_parts = []
 
     if isinstance(input_obj, Image.Image):
@@ -636,6 +653,305 @@ def _section_between(text: str, start_label: str, end_label: Optional[str] = Non
     if not m_end:
         return rest.strip()
     return rest[: m_end.start()].strip()
+
+
+def _looks_like_graph_text(text: str) -> bool:
+    low = str(text or "").lower()
+    return any(
+        cue in low
+        for cue in (
+            "graph",
+            "graphed",
+            "domain",
+            "range",
+            "endpoint",
+            "asymptote",
+            "x-axis",
+            "y-axis",
+        )
+    )
+
+
+def _split_semicolon_values(value: str) -> List[str]:
+    s = str(value or "").strip()
+    if not s:
+        return []
+    low = s.lower()
+    if low in ("none", "n/a", "na", "no", "no asymptotes", "no discontinuities"):
+        return []
+    if ";" in s:
+        return [part.strip() for part in s.split(";") if part.strip()]
+    return [s]
+
+
+def _parse_graph_endpoint(raw_value: str) -> Optional[Dict[str, str]]:
+    m = re.match(
+        r"(?i)^\s*x\s*=\s*([^,]{1,120}?)\s*,\s*y\s*=\s*([^,]{1,120}?)\s*,\s*marker\s*=\s*(open|closed|arrow|unclear)\s*$",
+        str(raw_value or ""),
+    )
+    if not m:
+        return None
+    return {
+        "x": m.group(1).strip(),
+        "y": m.group(2).strip(),
+        "marker": m.group(3).strip().lower(),
+    }
+
+
+def _parse_graph_scale(raw_value: str) -> Optional[Dict[str, str]]:
+    m = re.match(
+        r"(?i)^\s*x_tick\s*=\s*([^,]{1,120}?)\s*,\s*y_tick\s*=\s*([^,]{1,120}?)\s*$",
+        str(raw_value or ""),
+    )
+    if not m:
+        return None
+    return {
+        "x_tick": m.group(1).strip(),
+        "y_tick": m.group(2).strip(),
+    }
+
+
+def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
+    source = str(text or "")
+    m_header = re.search(r"(?im)^\s*GRAPH_EVIDENCE\s*:\s*$", source)
+    if not m_header:
+        if _looks_like_graph_text(source):
+            log_telemetry("graph_evidence_parse_fail", {"reason": "header_missing"})
+        return None
+
+    bounded_slice = source[m_header.end(): m_header.end() + 2000]
+    required = ("LEFT_ENDPOINT", "RIGHT_ENDPOINT", "ASYMPTOTES", "DISCONTINUITIES", "SCALE", "CONFIDENCE")
+    fields: Dict[str, str] = {}
+    seen_any = False
+
+    for raw_line in bounded_slice.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            if seen_any:
+                break
+            continue
+        if re.search(r"(?i)\b(WORK|FINAL ANSWER|\[FINAL\])\b", stripped):
+            log_telemetry("graph_evidence_parse_fail", {"reason": "boundary_marker_in_block"})
+            return None
+        m_field = re.match(r"^\s*([A-Z_]+)\s*:\s*(.+?)\s*$", raw_line)
+        if not m_field:
+            if seen_any:
+                break
+            continue
+        key = m_field.group(1).strip().upper()
+        value = m_field.group(2).strip()
+        if key in required:
+            fields[key] = value
+            seen_any = True
+            if len(fields) == len(required):
+                break
+        elif seen_any:
+            break
+
+    missing = [k for k in required if k not in fields]
+    if missing:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "missing_fields", "missing_fields": missing})
+        return None
+
+    left = _parse_graph_endpoint(fields["LEFT_ENDPOINT"])
+    right = _parse_graph_endpoint(fields["RIGHT_ENDPOINT"])
+    scale = _parse_graph_scale(fields["SCALE"])
+    if left is None or right is None:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_endpoint_format"})
+        return None
+    if scale is None:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_scale_format"})
+        return None
+
+    try:
+        confidence = float(fields["CONFIDENCE"])
+    except Exception:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_confidence"})
+        return None
+    if confidence < 0.0 or confidence > 1.0:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_confidence"})
+        return None
+
+    return {
+        "left_endpoint": left,
+        "right_endpoint": right,
+        "asymptotes": _split_semicolon_values(fields["ASYMPTOTES"]),
+        "discontinuities": _split_semicolon_values(fields["DISCONTINUITIES"]),
+        "scale": scale,
+        "confidence": confidence,
+    }
+
+
+def _extract_interval_notation(value: str) -> Optional[Dict[str, Any]]:
+    m = re.search(r"([\(\[])\s*([^,\[\]\(\)]+?)\s*,\s*([^,\[\]\(\)]+?)\s*([\)\]])", str(value or ""))
+    if not m:
+        return None
+    lower = m.group(2).strip()
+    upper = m.group(3).strip()
+    return {
+        "raw": m.group(0).strip(),
+        "lower": lower,
+        "upper": upper,
+        "left_inclusive": m.group(1) == "[",
+        "right_inclusive": m.group(4) == "]",
+    }
+
+
+def _extract_interval_for_label(text: str, label: str) -> Optional[Dict[str, Any]]:
+    pattern = rf"(?im)^\s*{re.escape(label)}(?:\s*\([^)]+\))?\s*[:=]\s*([^\n\r]+)"
+    m = re.search(pattern, str(text or ""))
+    if not m:
+        return None
+    return _extract_interval_notation(m.group(1))
+
+
+def _normalize_bound_token(token: str) -> str:
+    return (
+        str(token or "")
+        .strip()
+        .lower()
+        .replace(" ", "")
+        .replace("−", "-")
+        .replace("âˆ’", "-")
+        .replace("∞", "inf")
+        .replace("âˆž", "inf")
+    )
+
+
+def _is_negative_infinity_token(token: str) -> bool:
+    t = _normalize_bound_token(token)
+    return t in ("-inf", "-infinity")
+
+
+def _is_positive_infinity_token(token: str) -> bool:
+    t = _normalize_bound_token(token)
+    return t in ("inf", "+inf", "infinity", "+infinity")
+
+
+def _token_to_float(token: str) -> Optional[float]:
+    t = _normalize_bound_token(token)
+    if not t or _is_negative_infinity_token(t) or _is_positive_infinity_token(t):
+        return None
+    try:
+        if "/" in t:
+            return float(Fraction(t))
+        return float(t)
+    except Exception:
+        return None
+
+
+def _interval_is_bounded(interval_obj: Dict[str, Any], side: str) -> bool:
+    if side == "left":
+        return not _is_negative_infinity_token(str(interval_obj.get("lower", "")))
+    return not _is_positive_infinity_token(str(interval_obj.get("upper", "")))
+
+
+def _interval_includes_value(interval_obj: Dict[str, Any], value_token: str) -> bool:
+    value = _token_to_float(value_token)
+    if value is None:
+        return False
+
+    lower_token = str(interval_obj.get("lower", ""))
+    upper_token = str(interval_obj.get("upper", ""))
+    lower = _token_to_float(lower_token)
+    upper = _token_to_float(upper_token)
+    eps = 1e-9
+
+    if _interval_is_bounded(interval_obj, "left") and lower is not None:
+        if value < lower - eps:
+            return False
+        if abs(value - lower) <= eps and not bool(interval_obj.get("left_inclusive", False)):
+            return False
+
+    if _interval_is_bounded(interval_obj, "right") and upper is not None:
+        if value > upper + eps:
+            return False
+        if abs(value - upper) <= eps and not bool(interval_obj.get("right_inclusive", False)):
+            return False
+
+    return True
+
+
+def _extract_domain_range_intervals(text: str) -> Dict[str, Optional[Dict[str, Any]]]:
+    return {
+        "domain": _extract_interval_for_label(text, "Domain"),
+        "range": _extract_interval_for_label(text, "Range"),
+    }
+
+
+def _interval_signature(interval_obj: Dict[str, Any]) -> tuple[str, str, bool, bool]:
+    return (
+        _normalize_bound_token(str(interval_obj.get("lower", ""))),
+        _normalize_bound_token(str(interval_obj.get("upper", ""))),
+        bool(interval_obj.get("left_inclusive", False)),
+        bool(interval_obj.get("right_inclusive", False)),
+    )
+
+
+def _collect_x_values(items: List[str]) -> List[str]:
+    values: List[str] = []
+    for item in items:
+        for m in re.finditer(r"(?i)\bx\s*=\s*([+-]?(?:(?:\d+/\d+)|\d+(?:\.\d+)?))", str(item or "")):
+            values.append(m.group(1).strip())
+    return values
+
+
+def _validate_work_final_consistency(
+    parsed_evidence: Optional[Dict[str, Any]],
+    work_text: str,
+    final_text: str,
+) -> List[Dict[str, Any]]:
+    if not parsed_evidence:
+        return []
+
+    mismatches: List[Dict[str, Any]] = []
+    work_intervals = _extract_domain_range_intervals(work_text)
+    final_intervals = _extract_domain_range_intervals(final_text)
+    final_domain = final_intervals.get("domain")
+    work_domain = work_intervals.get("domain")
+    work_range = work_intervals.get("range")
+    final_range = final_intervals.get("range")
+
+    left = parsed_evidence.get("left_endpoint", {}) or {}
+    right = parsed_evidence.get("right_endpoint", {}) or {}
+    left_marker = str(left.get("marker", "")).lower()
+    right_marker = str(right.get("marker", "")).lower()
+
+    if final_domain:
+        if left_marker == "open" and bool(final_domain.get("left_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "left", "marker": "open"})
+        if left_marker == "closed" and not bool(final_domain.get("left_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "left", "marker": "closed"})
+        if right_marker == "open" and bool(final_domain.get("right_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "right", "marker": "open"})
+        if right_marker == "closed" and not bool(final_domain.get("right_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "right", "marker": "closed"})
+        if left_marker == "arrow" and _interval_is_bounded(final_domain, "left"):
+            mismatches.append({"mismatch_type": "arrow_bound_conflict", "side": "left", "marker": "arrow"})
+        if right_marker == "arrow" and _interval_is_bounded(final_domain, "right"):
+            mismatches.append({"mismatch_type": "arrow_bound_conflict", "side": "right", "marker": "arrow"})
+
+    for asym_x in _collect_x_values(list(parsed_evidence.get("asymptotes", []) or [])):
+        if final_domain and _interval_includes_value(final_domain, asym_x):
+            mismatches.append({"mismatch_type": "asymptote_inclusion_conflict", "x": asym_x})
+
+    if work_domain and final_domain and _interval_signature(work_domain) != _interval_signature(final_domain):
+        mismatches.append(
+            {
+                "mismatch_type": "interval_disagreement_domain",
+                "work_interval": str(work_domain.get("raw", "")),
+                "final_interval": str(final_domain.get("raw", "")),
+            }
+        )
+    if work_range and final_range and _interval_signature(work_range) != _interval_signature(final_range):
+        mismatches.append(
+            {
+                "mismatch_type": "interval_disagreement_range",
+                "work_interval": str(work_range.get("raw", "")),
+                "final_interval": str(final_range.get("raw", "")),
+            }
+        )
+    return mismatches
 
 
 def _needs_graph_domain_range_retry(input_obj: Union[str, Image.Image], model_text: str) -> bool:
@@ -872,6 +1188,9 @@ def solve_pipeline(
         timeout = adjusted_timeout
     temperature = float(cfg.get("temperature", 0.0))
     max_output_tokens = int(cfg.get("max_output_tokens", 2200))
+    enable_graph_evidence_parsing = bool(cfg.get("ENABLE_GRAPH_EVIDENCE_PARSING", False))
+    enable_consistency_warnings = bool(cfg.get("ENABLE_CONSISTENCY_WARNINGS", False))
+    enable_consistency_blocking = bool(cfg.get("ENABLE_CONSISTENCY_BLOCKING", False))
     log_telemetry(
         "solve_request_start",
         {
@@ -953,9 +1272,11 @@ def solve_pipeline(
         reference_type=reference_type,
         reference_text=reference_text,
         reference_img_b64=reference_img_b64,
+        enable_graph_evidence_parsing=enable_graph_evidence_parsing,
     )
 
     raw_output = ""
+    parsed_graph_evidence: Optional[Dict[str, Any]] = None
     for attempt in range(retries + 1):
         if _is_cancelled():
             log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_request", "attempt": attempt + 1})
@@ -972,6 +1293,8 @@ def solve_pipeline(
                 flow_name="solve_main",
                 request_id=f"{solve_request_id}-main-{attempt + 1}",
             )
+            if enable_graph_evidence_parsing:
+                parsed_graph_evidence = _extract_graph_evidence_block(candidate)
             if _needs_graph_domain_range_retry(input_obj, candidate):
                 retry_payload = _with_graph_domain_range_retry_hint(payload)
                 log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
@@ -987,6 +1310,8 @@ def solve_pipeline(
                 )
                 if retry_output:
                     candidate = retry_output
+                    if enable_graph_evidence_parsing:
+                        parsed_graph_evidence = _extract_graph_evidence_block(candidate)
 
             if candidate and candidate.strip():
                 raw_output = candidate
@@ -1035,6 +1360,24 @@ def solve_pipeline(
         out = f"{ref_prefix}\n{out}"
 
     final_text = _extract_final_answer_text(out)
+    if enable_consistency_warnings and parsed_graph_evidence is not None:
+        work_text = _section_between(out, "WORK", "FINAL ANSWER")
+        final_section = _section_between(out, "FINAL ANSWER")
+        mismatches = _validate_work_final_consistency(parsed_graph_evidence, work_text, final_section)
+        for mismatch in mismatches:
+            payload = {
+                "request_id": solve_request_id,
+                "model": model_name,
+                "confidence": parsed_graph_evidence.get("confidence"),
+            }
+            payload.update(mismatch)
+            log_telemetry("validator_mismatch_warning", payload)
+        if mismatches and enable_consistency_blocking:
+            # Phase 1 is warning-only even when the future blocking flag is set.
+            log_telemetry(
+                "validator_blocking_phase1_noop",
+                {"request_id": solve_request_id, "model": model_name, "mismatch_count": len(mismatches)},
+            )
     if final_text and ref_prefix:
         # Keep parsed answer first so users see result immediately; append REF context at the bottom.
         final_text = f"{final_text}\n{ref_prefix}"

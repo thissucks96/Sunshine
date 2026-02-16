@@ -1,0 +1,11 @@
+WORK:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-5, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=5, y=unclear, marker=arrow
+  ASYMPTOTES: x=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1, y_tick=1
+  CONFIDENCE: 0.77
+FINAL ANSWER:
+Domain: (-inf, 2) U (2, inf)
+Range: (-inf, inf)

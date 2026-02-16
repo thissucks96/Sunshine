@@ -31,6 +31,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # behavior
     "debug": False,
     "telemetry_file": "solver_telemetry.jsonl",
+    "ENABLE_GRAPH_EVIDENCE_PARSING": False,
+    "ENABLE_CONSISTENCY_WARNINGS": False,
+    "ENABLE_CONSISTENCY_BLOCKING": False,
 
     # debounce
     "hotkey_debounce_ms": 250,
@@ -165,6 +168,24 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         reference_summary_model = str(DEFAULT_CONFIG["reference_summary_model"])
     if normalized.get("reference_summary_model") != reference_summary_model:
         normalized["reference_summary_model"] = reference_summary_model
+
+    graph_evidence_parsing = bool(
+        normalized.get("ENABLE_GRAPH_EVIDENCE_PARSING", DEFAULT_CONFIG["ENABLE_GRAPH_EVIDENCE_PARSING"])
+    )
+    if normalized.get("ENABLE_GRAPH_EVIDENCE_PARSING") != graph_evidence_parsing:
+        normalized["ENABLE_GRAPH_EVIDENCE_PARSING"] = graph_evidence_parsing
+
+    consistency_warnings = bool(
+        normalized.get("ENABLE_CONSISTENCY_WARNINGS", DEFAULT_CONFIG["ENABLE_CONSISTENCY_WARNINGS"])
+    )
+    if normalized.get("ENABLE_CONSISTENCY_WARNINGS") != consistency_warnings:
+        normalized["ENABLE_CONSISTENCY_WARNINGS"] = consistency_warnings
+
+    consistency_blocking = bool(
+        normalized.get("ENABLE_CONSISTENCY_BLOCKING", DEFAULT_CONFIG["ENABLE_CONSISTENCY_BLOCKING"])
+    )
+    if normalized.get("ENABLE_CONSISTENCY_BLOCKING") != consistency_blocking:
+        normalized["ENABLE_CONSISTENCY_BLOCKING"] = consistency_blocking
     return normalized
 
 

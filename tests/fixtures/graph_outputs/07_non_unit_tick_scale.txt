@@ -1,0 +1,11 @@
+WORK:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-10, y=-5, marker=closed
+  RIGHT_ENDPOINT: x=10, y=5, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=2, y_tick=0.5
+  CONFIDENCE: 0.9
+FINAL ANSWER:
+Domain: [-10, 10]
+Range: [-5, 5]
