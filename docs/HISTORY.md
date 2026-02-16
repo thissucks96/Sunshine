@@ -1,3 +1,9 @@
+## 2026-02-16 — Standardize Forced Visual Extraction Instruction Contract
+
+- Runtime behavior change in payload guidance only: `FORCED_VISUAL_EXTRACTION_INSTRUCTION` wording was standardized to require a numbered evidence checklist (scale, boundaries, arrows, asymptotes, discontinuities) before reasoning.
+- Existing insertion point remains unchanged (`user_parts.insert(0, forced_extraction_msg)`).
+- Output headers (`WORK:` / `FINAL ANSWER:`), normalization logic, retry loop, and clipboard flow remain unchanged.
+
 ## 2026-02-16 — Implement Forced Visual Extraction Trigger Clarifications
 
 - Runtime behavior change in payload construction: `should_force_visual_extraction` now activates only when `ENABLE_FORCED_VISUAL_EXTRACTION` is true and at least one condition is true:

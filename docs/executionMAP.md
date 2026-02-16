@@ -71,6 +71,7 @@
 - **Config:** `config.py:37`: `"ENABLE_FORCED_VISUAL_EXTRACTION": False`
 - **Hook:** `llm_pipeline.py:516-537`: computes `should_force_visual_extraction` from flag + input/reference/text triggers.
 - **Placement:** `llm_pipeline.py:578-580` inserts mandatory instruction block at the beginning of `user_parts`.
+- **Instruction Contract:** Numbered evidence-first extraction prompt requires scale, boundaries, arrows, asymptotes, and discontinuities before solving.
 - **Logic:** Prompt-only evidence-first instruction injection; solve retry loop unchanged.
 
 ### VII. MODEL CALL LAYER
