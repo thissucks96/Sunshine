@@ -2,9 +2,70 @@ import unittest
 from unittest.mock import patch
 
 import llm_pipeline
+from PIL import Image
 
 
 class SolvePipelineGraphEvidenceIntegrationTests(unittest.TestCase):
+    def test_forced_visual_extraction_flag_off_keeps_payload_unchanged(self):
+        with patch.object(llm_pipeline, "get_config", return_value={"ENABLE_FORCED_VISUAL_EXTRACTION": False}):
+            payload = llm_pipeline._build_solve_payload(
+                input_obj="Find domain and range.",
+                reference_active=False,
+                reference_type=None,
+                reference_text="",
+                reference_img_b64="",
+                enable_graph_evidence_parsing=False,
+            )
+
+        user_parts = payload[1]["content"]
+        forced_parts = [p for p in user_parts if p.get("text") == llm_pipeline.FORCED_VISUAL_EXTRACTION_INSTRUCTION]
+        self.assertEqual(0, len(forced_parts))
+
+    def test_forced_visual_extraction_inserts_at_start_for_primary_image(self):
+        with patch.object(llm_pipeline, "get_config", return_value={"ENABLE_FORCED_VISUAL_EXTRACTION": True}):
+            payload = llm_pipeline._build_solve_payload(
+                input_obj=Image.new("RGB", (16, 16), color="white"),
+                reference_active=False,
+                reference_type=None,
+                reference_text="",
+                reference_img_b64="",
+                enable_graph_evidence_parsing=False,
+            )
+
+        first_part = payload[1]["content"][0]
+        self.assertEqual("input_text", first_part.get("type"))
+        self.assertEqual(llm_pipeline.FORCED_VISUAL_EXTRACTION_INSTRUCTION, first_part.get("text"))
+
+    def test_forced_visual_extraction_inserts_at_start_for_starred_image_reference(self):
+        with patch.object(llm_pipeline, "get_config", return_value={"ENABLE_FORCED_VISUAL_EXTRACTION": True}):
+            payload = llm_pipeline._build_solve_payload(
+                input_obj="Solve 2x + 1 = 7.",
+                reference_active=True,
+                reference_type=llm_pipeline.REFERENCE_TYPE_IMG,
+                reference_text="",
+                reference_img_b64="ZmFrZQ==",
+                enable_graph_evidence_parsing=False,
+            )
+
+        first_part = payload[1]["content"][0]
+        self.assertEqual("input_text", first_part.get("type"))
+        self.assertEqual(llm_pipeline.FORCED_VISUAL_EXTRACTION_INSTRUCTION, first_part.get("text"))
+
+    def test_forced_visual_extraction_inserts_at_start_for_domain_range_intent_text(self):
+        with patch.object(llm_pipeline, "get_config", return_value={"ENABLE_FORCED_VISUAL_EXTRACTION": True}):
+            payload = llm_pipeline._build_solve_payload(
+                input_obj="Find the domain and range of the function.",
+                reference_active=False,
+                reference_type=None,
+                reference_text="",
+                reference_img_b64="",
+                enable_graph_evidence_parsing=False,
+            )
+
+        first_part = payload[1]["content"][0]
+        self.assertEqual("input_text", first_part.get("type"))
+        self.assertEqual(llm_pipeline.FORCED_VISUAL_EXTRACTION_INSTRUCTION, first_part.get("text"))
+
     def test_prompt_injection_is_flag_gated(self):
         payload_off = llm_pipeline._build_solve_payload(
             input_obj="Find domain and range.",
@@ -29,7 +90,7 @@ class SolvePipelineGraphEvidenceIntegrationTests(unittest.TestCase):
         self.assertNotIn("GRAPH_EVIDENCE:", sys_off)
         self.assertIn("GRAPH_EVIDENCE:", sys_on)
 
-    def test_retry_guard_receives_original_candidate_text(self):
+    def test_retry_guard_is_not_invoked_when_graph_retry_disabled(self):
         cfg = {
             "retries": 0,
             "request_timeout": 20,
@@ -52,7 +113,6 @@ class SolvePipelineGraphEvidenceIntegrationTests(unittest.TestCase):
             "reference_summary": "",
         }
         writes = []
-        seen = {}
 
         candidate = (
             "Prompt\n"
@@ -71,17 +131,13 @@ class SolvePipelineGraphEvidenceIntegrationTests(unittest.TestCase):
             "Range: (-5, 4]\n"
         )
 
-        def _fake_retry_guard(_input_obj, model_text):
-            seen["candidate"] = model_text
-            return False
-
         with patch.object(llm_pipeline, "get_config", return_value=cfg), patch.object(
             llm_pipeline, "load_starred_meta", return_value=meta
         ), patch.object(
             llm_pipeline, "_responses_text", return_value=candidate
         ), patch.object(
-            llm_pipeline, "_needs_graph_domain_range_retry", side_effect=_fake_retry_guard
-        ), patch.object(
+            llm_pipeline, "_needs_graph_domain_range_retry", return_value=True
+        ) as retry_guard_mock, patch.object(
             llm_pipeline, "_clipboard_write_retry", side_effect=lambda text, attempts=4, delay_sec=0.08: writes.append(text) or True
         ), patch.object(
             llm_pipeline, "mark_prompt_success", return_value=None
@@ -94,7 +150,7 @@ class SolvePipelineGraphEvidenceIntegrationTests(unittest.TestCase):
         ):
             llm_pipeline.solve_pipeline(client=object(), input_obj="graph request")
 
-        self.assertIn("GRAPH_EVIDENCE:", seen.get("candidate", ""))
+        retry_guard_mock.assert_not_called()
         self.assertTrue(any("GRAPH_EVIDENCE:" in w for w in writes))
 
     def test_warning_telemetry_is_noop_when_flags_false(self):

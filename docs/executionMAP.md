@@ -34,67 +34,69 @@
 
 **A. Pipeline Entry**
 
-- `llm_pipeline.py:1208`: `def solve_pipeline(...)`
-- `llm_pipeline.py:1315`: `payload = _build_solve_payload(...)`
+- `llm_pipeline.py:1241`: `def solve_pipeline(...)`
+- `llm_pipeline.py:1348`: `payload = _build_solve_payload(...)`
 - **Critical:** Payload is built exactly ONCE before the retry loop.
 
 ### IV. PAYLOAD CONSTRUCTION LAYER
 
 **A. Builder Function**
 
-- `llm_pipeline.py:491`: `def _build_solve_payload(...)`
-- `llm_pipeline.py:514`: System prompt assembled.
-- `llm_pipeline.py:549`: User content assembled.
+- `llm_pipeline.py:507`: `def _build_solve_payload(...)`
+- `llm_pipeline.py:539`: System prompt assembled.
+- `llm_pipeline.py:544`: User content assembled.
 - **Injection Points:**
   - Reference Injection (`STARRED_CONTEXT_GUIDE`)
   - Image/Text Injection
-  - **Forced Visual Extraction Hook** (Placeholder at `llm_pipeline.py:508`)
+  - Forced Visual Extraction Injection (`user_parts.insert(0, forced_extraction_msg)`)
 
-### V. GRAPH DETECTION (Pre-Solve Heuristic)
+### V. FORCED VISUAL EXTRACTION TRIGGERING (Pre-Solve)
 
 **Location:** Inside `_build_solve_payload`
 
-- `llm_pipeline.py:501`: `is_graph_problem = False`
-- `llm_pipeline.py:503`: `is_graph_problem = True` (if input is Image)
-- `llm_pipeline.py:506`: `is_graph_problem = ("graph" in low) ...` (Text heuristic)
-- **Status:** Purely heuristic. No pre-solve model call.
+- `llm_pipeline.py:516`: reads feature flag `ENABLE_FORCED_VISUAL_EXTRACTION`
+- `llm_pipeline.py:517`: trigger branch for primary image input (`isinstance(input_obj, Image.Image)`)
+- `llm_pipeline.py:518`: trigger branch for active STARRED image reference (`reference_active` + `reference_type == "IMG"`)
+- `llm_pipeline.py:520`: trigger branch for domain/range intent keywords in user text
+- **Status:** Flag-gated and prompt-only; no extra model call added.
 
 **Known Issues — Evidence Grounding Gap**
 - Under STARRED graph reference, summary generation can hallucinate graph details (e.g., incorrect vertex coordinates) while a later direct domain solve may still be correct.
 - Current graph retry is post-response and heuristic; it does not enforce strict evidence-first extraction before reasoning.
-- Forced visual extraction hook remains placeholder-only and does not currently prevent this failure mode.
+- Forced visual extraction now injects evidence-first instructions before user content when trigger conditions match.
 - This scenario illustrated a descriptive summary hallucination, which did not affect domain/range correctness. It remains a grounding gap for reference descriptions, not a solve correctness bug.
 
 ### VI. FORCED VISUAL EXTRACTION STATUS
 
 - **Config:** `config.py:37`: `"ENABLE_FORCED_VISUAL_EXTRACTION": False`
-- **Hook:** `llm_pipeline.py:507`: `if enable_forced_visual_extraction and is_graph_problem:`
-- **Logic:** Currently a placeholder (`pass`).
+- **Hook:** `llm_pipeline.py:516-537`: computes `should_force_visual_extraction` from flag + input/reference/text triggers.
+- **Placement:** `llm_pipeline.py:578-580` inserts mandatory instruction block at the beginning of `user_parts`.
+- **Logic:** Prompt-only evidence-first instruction injection; solve retry loop unchanged.
 
 ### VII. MODEL CALL LAYER
 
 **A. API Wrapper**
 
-- `llm_pipeline.py:383`: `def _responses_text(...)`
-- `llm_pipeline.py:423`: `client.responses.create(**req)`
+- `llm_pipeline.py:399`: `def _responses_text(...)`
+- `llm_pipeline.py:439`: `client.responses.create(**req)`
 **B. Retry Guard**
-- `llm_pipeline.py:465`: Internal retry for "unsupported parameter temperature".
+- `llm_pipeline.py:481`: Internal retry for "unsupported parameter temperature".
 
 ### VIII. RETRY SYSTEM
 
 **A. Base Retry Loop**
 
-- `llm_pipeline.py:1359`: `for attempt in range(retries + 1):`
-**B. Graph Retry Escalation**
-- `llm_pipeline.py:1003`: `def _needs_graph_domain_range_retry(...)` (Post-response check)
-- `llm_pipeline.py:1378`: `retry_payload = _with_graph_domain_range_retry_hint(payload)`
-- **Note:** Does not rebuild payload; appends hint to existing payload.
+- `llm_pipeline.py:1392`: `for attempt in range(retries + 1):`
+**B. Graph Retry Path (Disabled in solve loop)**
+- `llm_pipeline.py:1036`: `def _needs_graph_domain_range_retry(...)` (helper retained)
+- `llm_pipeline.py:1093`: `def _with_graph_domain_range_retry_hint(...)` (helper retained)
+- `llm_pipeline.py:1410`: graph retry branch is commented out in `solve_pipeline`, so no graph-specific second API call is executed.
 
 ### IX. OUTPUT NORMALIZATION LAYER
 
-- `llm_pipeline.py:552`: `clean_output`
-- `llm_pipeline.py:663`: `_normalize_final_answer_block`
-- `llm_pipeline.py:1156`: `_maybe_enforce_domain_range_intervals`
+- `llm_pipeline.py:585`: `clean_output`
+- `llm_pipeline.py:696`: `_normalize_final_answer_block`
+- `llm_pipeline.py:1189`: `_maybe_enforce_domain_range_intervals`
 - **Contract:** `WORK` / `FINAL ANSWER` format is preserved strictly.
 
 ### X. CLIPBOARD WRITE SYSTEM
@@ -112,7 +114,7 @@
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
 **C. Injection**
 - `llm_pipeline.py:1251`: Meta loaded per solve.
-- `llm_pipeline.py:1315`: Injected into payload if active.
+- `llm_pipeline.py:1348`: Injected into payload if active.
 **D. Edge Cases**
 - Startup clears reference (`main.py:751`).
 - Model switch preserves reference.
@@ -134,7 +136,7 @@
 3. **Classification:** Detected as text.
    - *Code:* `text = (pyperclip.paste() or "").strip()` (main.py:470)
 4. **Payload:** `solve_pipeline` builds payload.
-   - *Code:* `payload = _build_solve_payload(...)` (llm_pipeline.py:1315)
+   - *Code:* `payload = _build_solve_payload(...)` (llm_pipeline.py:1348)
 5. **Execution:** Model is called.
    - *Code:* `resp = client.responses.create(**req)` (llm_pipeline.py:423)
 6. **Output:** Clipboard updated.
@@ -167,7 +169,7 @@
 
 | Feature | Status | Location |
 | :--- | :--- | :--- |
-| **Graph Retry** | ✅ Active | `llm_pipeline.py:1003` |
+| **Graph Retry** | ⏸ Disabled In `solve_pipeline` | `llm_pipeline.py:1410` |
 | **Graph Validator** | ⚠️ Warning Only | `llm_pipeline.py:945` |
-| **Forced Visual Extraction** | 🚧 Placeholder | `llm_pipeline.py:508` |
+| **Forced Visual Extraction** | ✅ Flag-Gated Prompt Injection | `llm_pipeline.py:516` |
 | **Pre-Solve Classifier** | ❌ Not Implemented | (Heuristic only) |

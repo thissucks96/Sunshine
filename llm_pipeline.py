@@ -117,6 +117,22 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
     "After GRAPH_EVIDENCE, continue normal WORK reasoning.\n"
 )
 
+FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
+    "MANDATORY VISUAL EXTRACTION STEP:\n"
+    "Inside your WORK section, create a subsection titled \"Evidence\". Before computing any answer, explicitly extract:\n\n"
+    "X-axis Scale (units per tick)\n\n"
+    "Left Boundary (coordinate + open/closed status)\n\n"
+    "Right Boundary (coordinate + open/closed status)\n\n"
+    "Arrows (direction of continuation)\n\n"
+    "Asymptotes (vertical/horizontal lines)\n\n"
+    "Discontinuities (holes or breaks)\n\n"
+    "Constraints:\n\n"
+    "If a feature is not present, write \"None\".\n\n"
+    "If the visual evidence is ambiguous or blocked, write \"Unknown\".\n\n"
+    "Do NOT guess coordinates.\n\n"
+    "Derive your FINAL ANSWER strictly from this Evidence."
+)
+
 
 def _normalize_star_label(raw: str) -> str:
     s = " ".join(str(raw or "").upper().split())
@@ -498,15 +514,28 @@ def _build_solve_payload(
 ) -> List[Dict[str, Any]]:
     cfg = get_config()
     enable_forced_visual_extraction = bool(cfg.get("ENABLE_FORCED_VISUAL_EXTRACTION", False))
-    is_graph_problem = False
-    if isinstance(input_obj, Image.Image):
-        is_graph_problem = True
-    else:
-        low = str(input_obj or "").lower()
-        is_graph_problem = ("graph" in low) or ("domain" in low and "range" in low)
-    if enable_forced_visual_extraction and is_graph_problem:
-        # Placeholder for future forced visual extraction logic.
-        pass
+    has_primary_image_input = isinstance(input_obj, Image.Image)
+    has_active_starred_image = bool(reference_active and reference_type == REFERENCE_TYPE_IMG)
+    user_text = str(input_obj or "").lower() if isinstance(input_obj, str) else ""
+    has_domain_range_intent = any(
+        cue in user_text
+        for cue in (
+            "domain",
+            "range",
+            "interval notation",
+            "open circle",
+            "closed circle",
+            "hole",
+            "asymptote",
+            "arrow",
+            "endpoint",
+            "discontinuity",
+        )
+    )
+    should_force_visual_extraction = bool(
+        enable_forced_visual_extraction
+        and (has_primary_image_input or has_active_starred_image or has_domain_range_intent)
+    )
 
     sys_prompt = SYSTEM_PROMPT
     if enable_graph_evidence_parsing:
@@ -545,6 +574,10 @@ def _build_solve_payload(
             user_parts.append({"type": "input_text", "text": merged})
         else:
             user_parts.append({"type": "input_text", "text": cur_text})
+
+    if should_force_visual_extraction:
+        forced_extraction_msg = {"type": "input_text", "text": FORCED_VISUAL_EXTRACTION_INSTRUCTION}
+        user_parts.insert(0, forced_extraction_msg)
 
     return [sys_msg, {"role": "user", "content": user_parts}]
 
@@ -1374,32 +1407,33 @@ def solve_pipeline(
             )
             if enable_graph_evidence_parsing:
                 parsed_graph_evidence = _extract_graph_evidence_block(candidate)
-            if _needs_graph_domain_range_retry(input_obj, candidate):
-                retry_payload = _with_graph_domain_range_retry_hint(payload)
-                log_telemetry(
-                    "solve_retry_metadata",
-                    {
-                        "request_id": solve_request_id,
-                        "attempt": attempt + 1,
-                        "retry_mode": "with_image",
-                        "retry_reason": "graph_domain_range_weak_marker_evidence",
-                    },
-                )
-                log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
-                retry_output = _responses_text(
-                    client=client,
-                    model_name=model_name,
-                    input_payload=retry_payload,
-                    timeout=timeout,
-                    temperature=temperature,
-                    max_output_tokens=max(16, int(max_output_tokens)),
-                    flow_name="solve_graph_retry",
-                    request_id=f"{solve_request_id}-graph-{attempt + 1}",
-                )
-                if retry_output:
-                    candidate = retry_output
-                    if enable_graph_evidence_parsing:
-                        parsed_graph_evidence = _extract_graph_evidence_block(candidate)
+            # Graph domain/range targeted retry is intentionally disabled.
+            # if _needs_graph_domain_range_retry(input_obj, candidate):
+            #     retry_payload = _with_graph_domain_range_retry_hint(payload)
+            #     log_telemetry(
+            #         "solve_retry_metadata",
+            #         {
+            #             "request_id": solve_request_id,
+            #             "attempt": attempt + 1,
+            #             "retry_mode": "with_image",
+            #             "retry_reason": "graph_domain_range_weak_marker_evidence",
+            #         },
+            #     )
+            #     log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
+            #     retry_output = _responses_text(
+            #         client=client,
+            #         model_name=model_name,
+            #         input_payload=retry_payload,
+            #         timeout=timeout,
+            #         temperature=temperature,
+            #         max_output_tokens=max(16, int(max_output_tokens)),
+            #         flow_name="solve_graph_retry",
+            #         request_id=f"{solve_request_id}-graph-{attempt + 1}",
+            #     )
+            #     if retry_output:
+            #         candidate = retry_output
+            #         if enable_graph_evidence_parsing:
+            #             parsed_graph_evidence = _extract_graph_evidence_block(candidate)
 
             if candidate and candidate.strip():
                 raw_output = candidate
