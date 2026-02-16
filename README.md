@@ -68,5 +68,12 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - `python -m unittest tests.test_model_switch_cancel_order`
 - `python -m unittest tests.test_config_model_migration`
 
+## User Screenshot Assumptions and Future Scaling
+- Current operating assumption: this tool is used by a single disciplined user who provides clean, high-quality screenshots.
+- Current token-optimization direction (for example dynamic image resizing) assumes that screenshot quality is usually sufficient for reliable graph interpretation.
+- For future public release or multi-user deployment, stronger guardrails and fallback logic are required to handle inconsistent screenshot quality and varied user behavior.
+- Production planning should not rely on user discipline; implement adaptive resizing with validator-backed fallback before broad rollout.
+- Auto-model work should remain sequenced after graph-accuracy stabilization on the current branch baseline.
+
 ## Last Updated
 - 2026-02-16

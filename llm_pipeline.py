@@ -350,6 +350,36 @@ def _exception_payload(exc: Exception) -> Dict[str, Any]:
     }
 
 
+def _usage_value(container: Any, key: str) -> Any:
+    if container is None:
+        return None
+    if isinstance(container, dict):
+        return container.get(key)
+    return getattr(container, key, None)
+
+
+def _safe_int_or_none(value: Any) -> Optional[int]:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except Exception:
+        return None
+
+
+def _extract_usage_fields(resp: Any) -> Dict[str, Optional[int]]:
+    usage = _usage_value(resp, "usage")
+    prompt_tokens = _safe_int_or_none(_usage_value(usage, "prompt_tokens"))
+    completion_tokens = _safe_int_or_none(_usage_value(usage, "completion_tokens"))
+    prompt_details = _usage_value(usage, "prompt_tokens_details")
+    cached_tokens = _safe_int_or_none(_usage_value(prompt_details, "cached_tokens"))
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "cached_prompt_tokens": cached_tokens,
+    }
+
+
 def _responses_text(
     client: OpenAI,
     model_name: str,
@@ -392,6 +422,7 @@ def _responses_text(
         try:
             resp = client.responses.create(**req)
             call_elapsed_ms = int((time.monotonic() - call_started_mono) * 1000)
+            usage_fields = _extract_usage_fields(resp)
             log_telemetry(
                 "api_request_complete",
                 {
@@ -405,6 +436,9 @@ def _responses_text(
                     "retries": max(0, api_attempt - 1),
                     "timeout_type": "",
                     "exception_payload": None,
+                    "prompt_tokens": usage_fields.get("prompt_tokens"),
+                    "completion_tokens": usage_fields.get("completion_tokens"),
+                    "cached_prompt_tokens": usage_fields.get("cached_prompt_tokens"),
                 },
             )
             break
@@ -1274,6 +1308,39 @@ def solve_pipeline(
         reference_img_b64=reference_img_b64,
         enable_graph_evidence_parsing=enable_graph_evidence_parsing,
     )
+    payload_has_image = False
+    try:
+        user_content = payload[1].get("content", []) if len(payload) > 1 and isinstance(payload[1], dict) else []
+        payload_has_image = any(
+            isinstance(part, dict) and str(part.get("type", "")).strip().lower() == "input_image"
+            for part in user_content
+        )
+    except Exception:
+        payload_has_image = False
+
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
+    image_pixel_count: Optional[int] = None
+    if isinstance(input_obj, Image.Image):
+        try:
+            image_width, image_height = input_obj.size
+            image_pixel_count = int(image_width) * int(image_height)
+        except Exception:
+            image_width = None
+            image_height = None
+            image_pixel_count = None
+    log_telemetry(
+        "solve_image_metadata",
+        {
+            "request_id": solve_request_id,
+            "model": model_name,
+            "input_is_image": isinstance(input_obj, Image.Image),
+            "width": image_width,
+            "height": image_height,
+            "pixel_count": image_pixel_count,
+            "reference_image_included": bool(reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64),
+        },
+    )
 
     raw_output = ""
     parsed_graph_evidence: Optional[Dict[str, Any]] = None
@@ -1297,6 +1364,15 @@ def solve_pipeline(
                 parsed_graph_evidence = _extract_graph_evidence_block(candidate)
             if _needs_graph_domain_range_retry(input_obj, candidate):
                 retry_payload = _with_graph_domain_range_retry_hint(payload)
+                log_telemetry(
+                    "solve_retry_metadata",
+                    {
+                        "request_id": solve_request_id,
+                        "attempt": attempt + 1,
+                        "retry_mode": "with_image",
+                        "retry_reason": "graph_domain_range_weak_marker_evidence",
+                    },
+                )
                 log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
                 retry_output = _responses_text(
                     client=client,
@@ -1322,6 +1398,15 @@ def solve_pipeline(
                 log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "empty_response"})
                 set_status("Empty model response.")
                 return
+            log_telemetry(
+                "solve_retry_metadata",
+                {
+                    "request_id": solve_request_id,
+                    "attempt": attempt + 1,
+                    "retry_mode": "with_image" if payload_has_image else "text_only",
+                    "retry_reason": "empty_response",
+                },
+            )
         except Exception as e:
             if _is_cancelled():
                 log_telemetry(
@@ -1335,6 +1420,15 @@ def solve_pipeline(
                 log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "exception", "error": str(e)})
                 set_status(f"Solve failed: {e}")
                 return
+            log_telemetry(
+                "solve_retry_metadata",
+                {
+                    "request_id": solve_request_id,
+                    "attempt": attempt + 1,
+                    "retry_mode": "with_image" if payload_has_image else "text_only",
+                    "retry_reason": "exception",
+                },
+            )
 
     if _is_cancelled():
         log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "post_request"})
