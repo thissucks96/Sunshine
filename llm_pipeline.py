@@ -119,18 +119,15 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
 
 FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "MANDATORY VISUAL EXTRACTION STEP:\n"
-    "Inside your WORK section, create a subsection titled \"Evidence\". Before computing any answer, explicitly extract:\n\n"
-    "X-axis Scale (units per tick)\n\n"
-    "Left Boundary (coordinate + open/closed status)\n\n"
-    "Right Boundary (coordinate + open/closed status)\n\n"
-    "Arrows (direction of continuation)\n\n"
-    "Asymptotes (vertical/horizontal lines)\n\n"
-    "Discontinuities (holes or breaks)\n\n"
-    "Constraints:\n\n"
-    "If a feature is not present, write \"None\".\n\n"
-    "If the visual evidence is ambiguous or blocked, write \"Unknown\".\n\n"
-    "Do NOT guess coordinates.\n\n"
-    "Derive your FINAL ANSWER strictly from this Evidence."
+    "Before computing any answer, explicitly extract ALL of the following in your WORK section:\n"
+    "1. X-axis scale (units per tick)\n"
+    "2. Left Boundary (coordinate + open/closed)\n"
+    "3. Right Boundary (coordinate + open/closed)\n"
+    "4. Arrows (direction of continuation)\n"
+    "5. Asymptotes (vertical/horizontal lines)\n"
+    "6. Discontinuities (holes/breaks)\n"
+    "If a feature is absent, write 'None'. If ambiguous or blocked, write 'Unknown'.\n"
+    "Do NOT guess coordinates. Derive your FINAL ANSWER strictly from evidence."
 )
 
 
@@ -515,7 +512,8 @@ def _build_solve_payload(
     cfg = get_config()
     enable_forced_visual_extraction = bool(cfg.get("ENABLE_FORCED_VISUAL_EXTRACTION", False))
     has_primary_image_input = isinstance(input_obj, Image.Image)
-    has_active_starred_image = bool(reference_active and reference_type == REFERENCE_TYPE_IMG)
+    # Use string literal "IMG" to prevent NameError if constant is missing
+    has_active_starred_image = bool(reference_active and reference_type == "IMG")
     user_text = str(input_obj or "").lower() if isinstance(input_obj, str) else ""
     has_domain_range_intent = any(
         cue in user_text
@@ -1407,7 +1405,7 @@ def solve_pipeline(
             )
             if enable_graph_evidence_parsing:
                 parsed_graph_evidence = _extract_graph_evidence_block(candidate)
-            # Graph domain/range targeted retry is intentionally disabled.
+            # Graph retry is intentionally disabled:
             # if _needs_graph_domain_range_retry(input_obj, candidate):
             #     retry_payload = _with_graph_domain_range_retry_hint(payload)
             #     log_telemetry(
