@@ -6,11 +6,13 @@ from typing import Dict, Any, Optional
 
 APP_NAME = "SunnyNotSummer"
 MODEL = "gpt-4o"
+REMOVED_MODELS = {"gpt-5"}
+REMOVED_MODEL_FALLBACK = "gpt-5.2"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "api_key": "",
     "model": MODEL,
-    "available_models": [MODEL, "gpt-4o-mini", "gpt-5-mini", "gpt-5", "gpt-5.2"],
+    "available_models": [MODEL, "gpt-4o-mini", "gpt-5-mini", "gpt-5.2"],
     "temperature": 0.0,
     "request_timeout": 25,
     "retries": 1,
@@ -64,6 +66,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(cfg or {})
 
     model_name = str(normalized.get("model", MODEL) or MODEL).strip() or MODEL
+    if model_name.lower() in REMOVED_MODELS:
+        model_name = REMOVED_MODEL_FALLBACK
     if normalized.get("model") != model_name:
         normalized["model"] = model_name
 
@@ -72,6 +76,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(available_models_raw, list):
         for raw in available_models_raw:
             m = str(raw or "").strip()
+            if m.lower() in REMOVED_MODELS:
+                continue
             if m and m not in available_models:
                 available_models.append(m)
 
@@ -84,6 +90,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     # Ensure default selectable models are always present for tray/runtime switching.
     for default_model in DEFAULT_CONFIG.get("available_models", []):
         m = str(default_model or "").strip()
+        if m.lower() in REMOVED_MODELS:
+            continue
         if m and m not in available_models:
             available_models.append(m)
 

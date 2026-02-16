@@ -86,7 +86,7 @@ def _run_call(api_key: str, model: str, timeout: int, max_output_tokens: int, pr
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Reproduce mid-run model switching call behavior.")
-    parser.add_argument("--model-a", default="gpt-5")
+    parser.add_argument("--model-a", default="gpt-5-mini")
     parser.add_argument("--model-b", default="gpt-5.2")
     parser.add_argument("--calls-before", type=int, default=3)
     parser.add_argument("--calls-after", type=int, default=3)

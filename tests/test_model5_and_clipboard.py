@@ -25,24 +25,24 @@ class _FakeClient:
 
 
 class ModelAndClipboardTests(unittest.TestCase):
-    def test_responses_text_omits_temperature_for_gpt5_and_raises_token_floor(self):
+    def test_responses_text_omits_temperature_for_gpt5_family_and_raises_token_floor(self):
         client = _FakeClient()
         out = llm_pipeline._responses_text(
             client=client,
-            model_name="gpt-5",
+            model_name="gpt-5-mini",
             input_payload=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
             timeout=20,
             temperature=0.7,
             max_output_tokens=32,
             flow_name="test",
-            request_id="test-gpt5",
+            request_id="test-gpt5-family",
         )
         self.assertEqual(out, "ok")
         self.assertEqual(len(client.responses.calls), 1)
         sent = client.responses.calls[0]
         self.assertNotIn("temperature", sent)
         self.assertEqual(int(sent.get("max_output_tokens", 0)), 128)
-        self.assertEqual(((sent.get("reasoning") or {}).get("effort")), "low")
+        self.assertNotIn("reasoning", sent)
 
     def test_responses_text_keeps_temperature_for_non_gpt5(self):
         client = _FakeClient()
@@ -186,12 +186,12 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertEqual(len(writes), 1)
         self.assertIn("Solve canceled: model switched.", statuses)
 
-    def test_gpt5_uses_single_solve_attempt_even_if_retries_configured(self):
+    def test_gpt5_family_respects_configured_solve_retries(self):
         statuses = []
         cfg = {
             "retries": 3,
             "request_timeout": 20,
-            "model": "gpt-5",
+            "model": "gpt-5-mini",
             "temperature": 0.0,
             "max_output_tokens": 2200,
             "clipboard_history_settle_sec": 0.6,
@@ -218,7 +218,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         ):
             llm_pipeline.solve_pipeline(client=object(), input_obj="2 + 2 = ?")
 
-        self.assertEqual(mock_call.call_count, 1)
+        self.assertEqual(mock_call.call_count, 4)
         self.assertTrue(any("Solve failed: boom" in s for s in statuses))
 
 

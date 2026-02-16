@@ -312,11 +312,6 @@ def _is_gpt5_family_model(model_name: str) -> bool:
     return str(model_name or "").strip().lower().startswith("gpt-5")
 
 
-def _is_exact_gpt5_model(model_name: str) -> bool:
-    m = str(model_name or "").strip().lower()
-    return m == "gpt-5" or m.startswith("gpt-5-")
-
-
 def _timeout_type_from_exception(exc: Exception) -> str:
     msg = str(exc or "").lower()
     if "connect timeout" in msg:
@@ -355,7 +350,6 @@ def _responses_text(
     rid = str(request_id or f"{flow_name}-{uuid.uuid4().hex[:10]}")
     req_started_unix = time.time()
     api_attempt = 0
-    is_exact_gpt5 = _is_exact_gpt5_model(str(model_name))
     is_gpt5_family = _is_gpt5_family_model(str(model_name))
     req_max_output_tokens = max(128, int(max_output_tokens)) if is_gpt5_family else max(16, int(max_output_tokens))
     req = {
@@ -364,9 +358,6 @@ def _responses_text(
         "max_output_tokens": req_max_output_tokens,
         "timeout": timeout,
     }
-    if is_exact_gpt5:
-        # Reduce reasoning latency spikes that can cause frequent timeout on gpt-5 vision solves.
-        req["reasoning"] = {"effort": "low"}
     if not is_gpt5_family:
         req["temperature"] = temperature
     while True:
@@ -383,7 +374,6 @@ def _responses_text(
                 "api_attempt": api_attempt,
                 "timeout_sec": timeout,
                 "temperature_included": "temperature" in req,
-                "reasoning_effort": (req.get("reasoning") or {}).get("effort", ""),
             },
         )
         try:
@@ -425,9 +415,6 @@ def _responses_text(
             )
             # Some models (for example certain GPT-5 variants) reject temperature.
             msg = str(e).lower()
-            if "unsupported parameter" in msg and "reasoning" in msg and "reasoning" in req:
-                req.pop("reasoning", None)
-                continue
             if "unsupported parameter" in msg and "temperature" in msg and "temperature" in req:
                 req.pop("temperature", None)
                 continue
@@ -875,20 +862,14 @@ def solve_pipeline(
     retries = int(cfg.get("retries", 1))
     timeout = int(cfg.get("request_timeout", 25))
     model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
-    if _is_exact_gpt5_model(model_name):
-        adjusted_timeout = max(timeout, 45)
+    if _is_gpt5_family_model(model_name):
+        adjusted_timeout = max(timeout, 35)
         if adjusted_timeout != timeout:
             log_telemetry(
                 "model_timeout_adjusted",
                 {"request_id": solve_request_id, "model": model_name, "configured": timeout, "effective": adjusted_timeout},
             )
         timeout = adjusted_timeout
-        if retries != 0:
-            log_telemetry(
-                "model_retry_adjusted",
-                {"request_id": solve_request_id, "model": model_name, "configured": retries, "effective": 0},
-            )
-        retries = 0
     temperature = float(cfg.get("temperature", 0.0))
     max_output_tokens = int(cfg.get("max_output_tokens", 2200))
     log_telemetry(
