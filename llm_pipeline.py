@@ -1284,6 +1284,6 @@ def toggle_star_worker(client: OpenAI) -> None:
         save_starred_meta(meta)
         set_reference_active(True)
         log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
-        set_status(f"REF SET TEXT ASSUMED: {summary}")
+        set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
     else:
         set_status("REF assign failed: no image/text in clipboard")
