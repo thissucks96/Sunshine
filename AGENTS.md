@@ -40,6 +40,23 @@ Use this file as the default instruction set for coding agents working in this r
 
 ---
 
+## Architecture Map Governance
+
+**Canonical Reference**: `docs/executionMAP.md` is the forensic source of truth for the system's execution flow.
+
+### 1. Mandatory Pre-Change Review
+Before proposing any runtime code modification, you MUST:
+- Read `docs/executionMAP.md`.
+- Identify which specific Execution Layer (e.g., Payload Construction, Output Normalization) your change affects.
+- Explicitly reference these layers in your plan.
+
+### 2. Bidirectional Synchronization
+- **Code ↔ Map**: Any commit that alters runtime behavior (new flags, logic branches, file inputs, or output formats) MUST include a corresponding update to `docs/executionMAP.md`.
+- **History**: Any functional change MUST be logged in `docs/HISTORY.md`.
+- **Drift Zero Tolerance**: Architecture drift is not allowed. If the code diverges from the map, the map must be updated immediately.
+
+---
+
 ## 1) Default Working Style
 
 * Keep changes minimal and local unless broader change is explicitly requested.
