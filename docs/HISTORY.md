@@ -1,3 +1,11 @@
+## 2026-02-16 — Document External AHK Hotkey Conflict With Solve Trigger
+
+- Operational finding: solve hotkey (`ctrl+shift+x`) can fail when an AutoHotkey v1 script is running with global keyboard interception/remaps.
+- Confirmed behavior: tray `Solve Now` continues to work because it bypasses the global hotkey matcher path.
+- Root cause observed in user environment: AHK global hook/remap conflict (including a backtick remap) interfered with combo detection.
+- Resolution in user environment: disabling/removing the conflicting AHK binding restored solve hotkey behavior.
+- Runtime code and output contract unchanged.
+
 ## 2026-02-16 — Standardize Forced Visual Extraction Instruction Contract
 
 - Runtime behavior change in payload guidance only: `FORCED_VISUAL_EXTRACTION_INSTRUCTION` wording was standardized to require a numbered evidence checklist (scale, boundaries, arrows, asymptotes, discontinuities) before reasoning.

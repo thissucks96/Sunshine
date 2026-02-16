@@ -17,6 +17,7 @@
   - `main.py:444` → `worker`
   - `main.py:550` / `586` (Hotkey registration/trigger)
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
+- **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
 
 ### II. INPUT CLASSIFICATION LAYER
 
