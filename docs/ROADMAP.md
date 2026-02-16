@@ -1,5 +1,27 @@
 # SunnyNotSummer Roadmap
 
+## Approved Rollback Anchors
+
+### exam-ready-v1
+- Identifier: Tag `exam-ready-v1` (Commit `edc730f`)
+- Commit message: `feat: add graph evidence extraction and warning-only interval validator (flags default off)`
+- Description: Stable diagnostic baseline with graph evidence extraction and warning-only interval validator (flags default off, tests passing)
+
+### pre-validator-stable
+- Identifier: Commit `31ece74`
+- Commit message: `docs: add vision accuracy audit and align docs [scope: README/docs]`
+- Description: Pre-validator pipeline peak — hardened auto-model logic, retry and clipboard stability
+
+### master-bedrock
+- Identifier: Commit `77bc30b`
+- Commit message: `stable version before auto model feature`
+- Description: Master bedrock before auto model feature — clean rollback to foundational app state
+
+### first-graph-success
+- Identifier: Commit `552a7ad`
+- Commit message: `personal ui updates and the app can now solve that graph from hw`
+- Description: First real-world graph solve success milestone
+
 ## Phase 1 (Current Stabilization)
 - Keep solve output deterministic and concise.
 - Preserve clipboard result integrity (full output + final answer flow).
