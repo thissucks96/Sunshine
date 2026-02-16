@@ -1,9 +1,11 @@
+import ctypes
 import os
 import time
 import json
 import re
 import threading
 import sys
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import pyperclip
@@ -28,6 +30,7 @@ _PROMPT_SUCCESS_SEQ = 0
 _LAST_RENDER_SIGNATURE = ""
 
 _PROMPT_SUCCESS_PULSE_SEC = 0.8
+_VALID_NOTIFICATION_TYPES = {"STATUS", "ERROR", "INFO"}
 
 
 def set_app_icon(icon) -> None:
@@ -100,6 +103,37 @@ def _load_idle_icon_locked() -> None:
 def _message_looks_error(message: str) -> bool:
     t = (message or "").strip().lower()
     return ("error" in t) or ("failed" in t)
+
+
+def _normalize_notification_type(level: str) -> str:
+    normalized = str(level or "").strip().upper()
+    return normalized if normalized in _VALID_NOTIFICATION_TYPES else "INFO"
+
+
+def _build_notification_clipboard_payload(message: str, level: str, source: str) -> str:
+    notification_type = _normalize_notification_type(level)
+    timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    source_text = str(source or "unknown").strip() or "unknown"
+    message_text = str(message or "").replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+    return "\n".join(
+        [
+            f"NOTIFICATION_TYPE: {notification_type}",
+            f"TIMESTAMP: {timestamp}",
+            f"SOURCE: {source_text}",
+            f"MESSAGE: {message_text}",
+        ]
+    )
+
+
+def mirror_notification_to_clipboard(message: str, level: str, source: str) -> bool:
+    payload = _build_notification_clipboard_payload(message=message, level=level, source=source)
+    ok = safe_clipboard_write(payload)
+    if not ok:
+        log_telemetry(
+            "notification_clipboard_mirror_failed",
+            {"type": _normalize_notification_type(level), "source": str(source or "unknown")},
+        )
+    return ok
 
 
 def _render_tray_icon_locked() -> Tuple[Image.Image, str, str]:
@@ -180,19 +214,21 @@ def mark_prompt_success() -> None:
     threading.Thread(target=_clear_prompt_success_after, args=(seq,), daemon=True).start()
 
 
-def show_notification(msg: str, title: str = "SunnyNotSummer") -> None:
+def show_notification(msg: str, title: str = "SunnyNotSummer", level: str = "INFO", source: str = "show_notification") -> bool:
     global _APP_ICON
     cfg = get_config()
     if not bool(cfg.get("status_notify_enabled", True)):
-        return
+        return False
+    shown = False
     if _APP_ICON and getattr(_APP_ICON, "HAS_NOTIFICATION", False):
         try:
             max_chars = int(cfg.get("status_notify_max_chars", 72))
             compact_msg = " ".join(str(msg or "").split())
             if len(compact_msg) > max_chars:
                 compact_msg = compact_msg[: max_chars - 3].rstrip() + "..."
-            notify_title = str(cfg.get("status_notify_title", "SNS") or "SNS").strip()
+            notify_title = str(cfg.get("status_notify_title", title) or title).strip()
             _APP_ICON.notify(compact_msg, title=notify_title)
+            shown = True
             clear_sec = float(cfg.get("status_notify_clear_sec", 1.1))
             if clear_sec > 0 and hasattr(_APP_ICON, "remove_notification"):
                 def _clear():
@@ -205,6 +241,27 @@ def show_notification(msg: str, title: str = "SunnyNotSummer") -> None:
                 threading.Thread(target=_clear, daemon=True).start()
         except Exception:
             pass
+    if shown:
+        mirror_notification_to_clipboard(str(msg or ""), level=level, source=source)
+    return shown
+
+
+def show_message_box_notification(
+    message: str,
+    title: str,
+    flags: int,
+    level: str = "INFO",
+    source: str = "message_box",
+) -> bool:
+    text = str(message or "")
+    caption = str(title or "SunnyNotSummer")
+    try:
+        ctypes.windll.user32.MessageBoxW(0, text, caption, int(flags))
+    except Exception as e:
+        log_telemetry("message_box_error", {"title": caption, "source": source, "error": str(e)})
+        return False
+    mirror_notification_to_clipboard(text, level=level, source=source)
+    return True
 
 
 def log_telemetry(event: str, data: Dict[str, Any]) -> None:
@@ -223,7 +280,9 @@ def set_status(msg: str) -> None:
     global _LAST_STATUS_MESSAGE, _LAST_STATUS_TS
     message = str(msg)
     now = time.monotonic()
-    set_error_active(_message_looks_error(message))
+    is_error = _message_looks_error(message)
+    status_level = "ERROR" if is_error else "STATUS"
+    set_error_active(is_error)
 
     with _STATUS_LOCK:
         if message == _LAST_STATUS_MESSAGE and (now - _LAST_STATUS_TS) < _STATUS_DEDUPE_WINDOW_SEC:
@@ -233,9 +292,7 @@ def set_status(msg: str) -> None:
         _LAST_STATUS_TS = now
 
     log_telemetry("status", {"message": message})
-    safe_clipboard_write(message)
-    cfg = get_config()
-    show_notification(message)
+    show_notification(message, level=status_level, source="set_status")
 
 
 def safe_clipboard_read(max_attempts: int = 3, delay: float = 0.05) -> Tuple[Any, Optional[Exception]]:

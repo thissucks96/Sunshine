@@ -24,6 +24,16 @@ class _FakeClient:
         self.responses = _FakeResponses()
 
 
+class _FakeNotifyIcon:
+    HAS_NOTIFICATION = True
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def notify(self, msg, title=None):
+        self.calls.append((msg, title))
+
+
 class ModelAndClipboardTests(unittest.TestCase):
     def test_responses_text_omits_temperature_for_gpt5_family_and_raises_token_floor(self):
         client = _FakeClient()
@@ -115,20 +125,77 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertGreaterEqual(len(writes), 2)
         self.assertTrue(writes[-1].startswith("* REF IMG: sample visual ref\n"))
 
-    def test_status_always_mirrors_to_clipboard(self):
+    def test_status_mirrors_structured_clipboard_payload(self):
         unique_message = "status mirror unit test"
-        with patch.object(utils, "safe_clipboard_write", return_value=True) as mock_copy, patch.object(
-            utils, "show_notification", return_value=None
+        fake_icon = _FakeNotifyIcon()
+        writes = []
+
+        def _fake_copy(text: str, max_attempts: int = 3, delay: float = 0.05) -> bool:
+            writes.append(text)
+            return True
+
+        with patch.object(utils, "_APP_ICON", fake_icon), patch.object(
+            utils, "safe_clipboard_write", side_effect=_fake_copy
         ), patch.object(
             utils, "set_error_active", return_value=None
         ), patch.object(
             utils, "log_telemetry", return_value=None
         ), patch.object(
-            utils, "get_config", return_value={}
+            utils,
+            "get_config",
+            return_value={
+                "status_notify_enabled": True,
+                "status_notify_max_chars": 72,
+                "status_notify_clear_sec": 0.0,
+                "status_notify_title": "SNS",
+            },
+        ), patch.object(
+            utils, "_LAST_STATUS_MESSAGE", ""
+        ), patch.object(
+            utils, "_LAST_STATUS_TS", 0.0
         ):
             utils.set_status(unique_message)
 
-        mock_copy.assert_called_with(unique_message)
+        self.assertEqual(len(fake_icon.calls), 1)
+        self.assertEqual(len(writes), 1)
+        payload = writes[0]
+        self.assertIn("NOTIFICATION_TYPE: STATUS", payload)
+        self.assertIn("SOURCE: set_status", payload)
+        self.assertIn(f"MESSAGE: {unique_message}", payload)
+
+    def test_suppressed_duplicate_status_does_not_rewrite_clipboard(self):
+        fake_icon = _FakeNotifyIcon()
+        writes = []
+
+        def _fake_copy(text: str, max_attempts: int = 3, delay: float = 0.05) -> bool:
+            writes.append(text)
+            return True
+
+        with patch.object(utils, "_APP_ICON", fake_icon), patch.object(
+            utils, "safe_clipboard_write", side_effect=_fake_copy
+        ), patch.object(
+            utils, "set_error_active", return_value=None
+        ), patch.object(
+            utils, "log_telemetry", return_value=None
+        ), patch.object(
+            utils,
+            "get_config",
+            return_value={
+                "status_notify_enabled": True,
+                "status_notify_max_chars": 72,
+                "status_notify_clear_sec": 0.0,
+                "status_notify_title": "SNS",
+            },
+        ), patch.object(
+            utils, "_LAST_STATUS_MESSAGE", ""
+        ), patch.object(
+            utils, "_LAST_STATUS_TS", 0.0
+        ):
+            utils.set_status("duplicate status")
+            utils.set_status("duplicate status")
+
+        self.assertEqual(len(fake_icon.calls), 1)
+        self.assertEqual(len(writes), 1)
 
     def test_cancelled_between_clipboard_writes_skips_final_write(self):
         writes = []

@@ -24,10 +24,10 @@ from utils import (
     log_telemetry,
     normalize_image_for_api,
     safe_clipboard_read,
-    safe_clipboard_write,
     set_app_icon,
     set_reference_active,
     set_status,
+    show_message_box_notification,
 )
 
 try:
@@ -153,7 +153,9 @@ def _verify_model_clipboard(model_name: str) -> bool:
     except Exception as e:
         log_telemetry("model_clipboard_verify", {"expected": expected, "ok": False, "error": str(e)})
         return False
-    ok = actual == expected
+    ok = actual == expected or (
+        "NOTIFICATION_TYPE: STATUS" in actual and f"MESSAGE: {expected}" in actual
+    )
     log_telemetry(
         "model_clipboard_verify",
         {"expected": expected, "actual_sample": actual[:120], "ok": ok},
@@ -163,8 +165,6 @@ def _verify_model_clipboard(model_name: str) -> bool:
 
 def _announce_model_active(model_name: str) -> bool:
     line = f"MODEL ACTIVE: {model_name}"
-    if not safe_clipboard_write(line):
-        log_telemetry("model_active_clipboard_error", {"model": model_name})
     set_status(line)
     return _verify_model_clipboard(model_name)
 
@@ -734,22 +734,14 @@ def main():
     global _TRAY_ICON
     if not ensure_single_instance():
         msg = "App is already running."
-        try:
-            pyperclip.copy(msg)
-        except Exception:
-            pass
-        ctypes.windll.user32.MessageBoxW(0, msg, "Error", 0x10)
+        show_message_box_notification(msg, title="Error", flags=0x10, level="ERROR", source="main.ensure_single_instance")
         sys.exit(1)
 
     cfg = get_config()
     api_key = resolve_api_key(cfg)
     if not api_key:
         msg = "OpenAI API key not found.\nApp will start, but solve/star features require a key."
-        try:
-            pyperclip.copy(msg)
-        except Exception:
-            pass
-        ctypes.windll.user32.MessageBoxW(0, msg, "Missing API Key", 0x30)
+        show_message_box_notification(msg, title="Missing API Key", flags=0x30, level="ERROR", source="main.missing_api_key")
 
     icon = pystray.Icon(APP_NAME, Image.new("RGB", (64, 64), "teal"), APP_NAME, menu=_build_tray_menu())
     _TRAY_ICON = icon
