@@ -474,3 +474,84 @@ Structured notification payload: Clipboard block emitted for user-visible notifi
 Vision Accuracy Audit Reference
 - Comprehensive graph and visual pipeline accuracy audit: `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 - Primary focus: image ingress fidelity, OCR robustness, graph endpoint/tick/asymptote reliability, retry coverage, and accuracy regression test coverage.
+
+## 13. Graph Evidence Validator
+
+### 1) Why This Feature Is Required
+- This feature protects against a specific graph-perception failure class: open/closed endpoint misreads, asymptote misclassification, and domain/range mismatch between interpreted graph evidence and final interval claims.
+- Vision-driven math is higher risk than text-only math because the model must first perceive symbolic and geometric intent (points, holes, arrows, scales, discontinuities) before reasoning; a perception miss corrupts all downstream steps.
+- Silent graph misinterpretation is unacceptable because the pipeline can return confidently formatted answers that appear valid while encoding incorrect interval truth.
+- The validator is a perception integrity safeguard, not a reasoning engine: it checks consistency between extracted graph evidence and declared WORK/FINAL interval outputs, then signals retry/warning behavior.
+
+### 2) Relative Difficulty and Complexity
+- This is a moderate-to-high complexity feature because it requires:
+  - Parsing semi-structured model output
+  - Extracting graph evidence blocks
+  - Interval normalization and comparison
+  - Handling edge cases (piecewise, asymptotes, holes, arrows)
+- It also touches retry logic and solve pipeline orchestration, so mistakes can affect solve flow rather than only local formatting.
+- The validator must remain warning-only until baseline confidence is high enough to avoid destabilizing production solves.
+
+### 3) What It Could Potentially Break
+- False positives that trigger unnecessary retries.
+- Increased latency due to additional validation and retry passes.
+- Increased token usage from retry escalation paths.
+- Mis-parsing of WORK sections if output-format contract drifts.
+- Interference with structured outputs if validator hooks are integrated incorrectly.
+
+### 4) Code Scope Impact
+- Directly affected:
+  - `llm_pipeline.py` for graph evidence extraction, retry trigger decisions, and `solve_pipeline` orchestration wiring.
+  - WORK/FINAL consistency validator logic (interval parsing, normalization, mismatch detection, warning signal decisions).
+  - Telemetry logging paths for validator/mismatch/retry diagnostics (event coverage and payload fields).
+  - Graph fixture and integration tests in:
+    - `tests/test_graph_evidence_parser.py`
+    - `tests/test_work_final_consistency_validator.py`
+    - `tests/test_solve_pipeline_graph_evidence_integration.py`
+    - `tests/fixtures/graph_outputs/*.txt`
+- Indirectly affected:
+  - Solve stability metrics (retry count, latency, token cost) and operations visibility through telemetry consumers.
+  - Output contract durability when future prompt changes alter WORK formatting.
+
+### 5) Current State
+- Validator runs behind feature flags.
+- Behavior is warning-only.
+- No output mutation/enforcement is applied yet.
+- Telemetry instrumentation is already in place for validator signal tracking.
+
+### 6) What Comes Next
+- Stabilize baseline validator accuracy first.
+- Measure retry frequency and false positive rate in telemetry.
+- Add structured-output compatibility so parser/validator remains robust as response formats evolve.
+- Only after stabilization on this branch, move auto-model development to a new branch.
+- After sufficient confidence, convert validator from warning-only to enforcement mode behind an explicit flag gate.
+
+## 14. STARRED REFERENCE SYSTEM
+
+### 1) Activation Flow
+The STAR toggle originates in `main.py` through `star_worker`, which delegates reference assignment and clearing to `toggle_star_worker` in `llm_pipeline.py`. Reference persistence is handled in backend storage artifacts:
+- `STARRED_META.json` for reference state and metadata
+- `STARRED.txt` for text reference content
+- `REFERENCE_IMG/current_starred.png` for image reference content
+
+### 2) Active State Semantics
+`reference_active` is loaded in `solve_pipeline` as a per-solve snapshot before payload construction. The solve execution uses that snapshot for the full solve lifecycle, including request attempts and post-processing stages.
+This snapshot is derived from persisted reference metadata loaded from disk at solve start.
+
+### 3) Payload Injection Guarantee
+When `reference_active` is true and metadata validation succeeds, reference content is injected into the model payload inside `_build_solve_payload`. This applies to both image problems and text problems, with type-specific injection paths for image and text references.
+
+### 4) Retry Behavior
+Retry attempts reuse the solve payload prepared from the initial snapshot. The graph retry path appends retry guidance while preserving existing payload content, including injected reference data. No retry path removes reference content.
+
+### 5) Model Switch & Cancellation
+Model switching cancels only the active solve request and does not clear persisted reference metadata. Solve cancellation checks terminate execution but do not mutate reference storage or active reference metadata.
+
+### 6) Startup Behavior
+Application startup explicitly clears reference state. As a result, references are session-scoped and do not persist across application restarts.
+
+### 7) Edge Cases
+If metadata loading fails, solve flow receives an inactive default reference state. Metadata file operations are not atomic, so a concurrent STAR toggle and solve read can theoretically produce a transient read failure. Under valid metadata loading, there is no execution branch where `reference_active` is true and payload construction proceeds without reference injection.
+
+**Guarantee Statement**
+The system guarantees reference inclusion for any solve that reaches payload construction with a valid active reference snapshot within a running session.
