@@ -496,6 +496,18 @@ def _build_solve_payload(
     reference_img_b64: str,
     enable_graph_evidence_parsing: bool = False,
 ) -> List[Dict[str, Any]]:
+    cfg = get_config()
+    enable_forced_visual_extraction = bool(cfg.get("ENABLE_FORCED_VISUAL_EXTRACTION", False))
+    is_graph_problem = False
+    if isinstance(input_obj, Image.Image):
+        is_graph_problem = True
+    else:
+        low = str(input_obj or "").lower()
+        is_graph_problem = ("graph" in low) or ("domain" in low and "range" in low)
+    if enable_forced_visual_extraction and is_graph_problem:
+        # Placeholder for future forced visual extraction logic.
+        pass
+
     sys_prompt = SYSTEM_PROMPT
     if enable_graph_evidence_parsing:
         sys_prompt = SYSTEM_PROMPT + "\n" + GRAPH_EVIDENCE_PROMPT_APPEND

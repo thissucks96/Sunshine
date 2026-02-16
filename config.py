@@ -34,6 +34,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "ENABLE_GRAPH_EVIDENCE_PARSING": False,
     "ENABLE_CONSISTENCY_WARNINGS": False,
     "ENABLE_CONSISTENCY_BLOCKING": False,
+    "ENABLE_FORCED_VISUAL_EXTRACTION": False,
 
     # debounce
     "hotkey_debounce_ms": 250,
@@ -186,6 +187,12 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     if normalized.get("ENABLE_CONSISTENCY_BLOCKING") != consistency_blocking:
         normalized["ENABLE_CONSISTENCY_BLOCKING"] = consistency_blocking
+
+    forced_visual_extraction = bool(
+        normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION", DEFAULT_CONFIG["ENABLE_FORCED_VISUAL_EXTRACTION"])
+    )
+    if normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION") != forced_visual_extraction:
+        normalized["ENABLE_FORCED_VISUAL_EXTRACTION"] = forced_visual_extraction
     return normalized
 
 

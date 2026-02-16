@@ -553,5 +553,9 @@ Application startup explicitly clears reference state. As a result, references a
 ### 7) Edge Cases
 If metadata loading fails, solve flow receives an inactive default reference state. Metadata file operations are not atomic, so a concurrent STAR toggle and solve read can theoretically produce a transient read failure. Under valid metadata loading, there is no execution branch where `reference_active` is true and payload construction proceeds without reference injection.
 
+### 8) Baseline Snapshot
+- Baseline snapshot tag `baseline_pre_visual_extraction` exists.
+- It captures solve pipeline, reference injection, and telemetry state before forced visual extraction work.
+
 **Guarantee Statement**
 The system guarantees reference inclusion for any solve that reaches payload construction with a valid active reference snapshot within a running session.
