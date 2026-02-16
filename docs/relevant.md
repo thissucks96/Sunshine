@@ -16,5 +16,4 @@ Risk:
 If future questions depend on vertex accuracy, hallucinated summary could propagate incorrect answers.
 
 Status:
-Investigation Phase.
-No runtime changes yet.
+Resolved — False alarm for correctness; documented for architectural context.

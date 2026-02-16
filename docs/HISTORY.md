@@ -1,3 +1,10 @@
+## 2026-02-16 — Graph Evidence Grounding Investigation Resolved
+
+- Investigation concluded that the STARRED summary hallucinated a vertex description but did not corrupt domain/range solve results.
+- The domain solve path independently re-read the image and produced the correct interval.
+- This was a false alarm for correctness. No runtime bug found.
+- Documentation reflects this finding and ongoing architectural improvement planning.
+
 ## 2026-02-16 — Investigating Graph Evidence Grounding
 
 - Discovered vertex hallucination under STARRED graph reference.

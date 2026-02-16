@@ -63,6 +63,7 @@
 - Under STARRED graph reference, summary generation can hallucinate graph details (e.g., incorrect vertex coordinates) while a later direct domain solve may still be correct.
 - Current graph retry is post-response and heuristic; it does not enforce strict evidence-first extraction before reasoning.
 - Forced visual extraction hook remains placeholder-only and does not currently prevent this failure mode.
+- This scenario illustrated a descriptive summary hallucination, which did not affect domain/range correctness. It remains a grounding gap for reference descriptions, not a solve correctness bug.
 
 ### VI. FORCED VISUAL EXTRACTION STATUS
 
