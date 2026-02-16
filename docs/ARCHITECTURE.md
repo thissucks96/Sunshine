@@ -432,3 +432,7 @@ Model probe: Lightweight API request executed before switching active model to v
 Graph-domain/range retry hint: A targeted second prompt pass when output suggests weak endpoint-marker reasoning for graph interval answers.
 Two-phase clipboard write: Solve output strategy that writes full formatted output first, then writes final-answer-only payload after a short settle delay.
 Structured notification payload: Clipboard block emitted for user-visible notifications with keys `NOTIFICATION_TYPE`, `TIMESTAMP`, `SOURCE`, `MESSAGE`.
+
+Vision Accuracy Audit Reference
+- Comprehensive graph and visual pipeline accuracy audit: `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
+- Primary focus: image ingress fidelity, OCR robustness, graph endpoint/tick/asymptote reliability, retry coverage, and accuracy regression test coverage.

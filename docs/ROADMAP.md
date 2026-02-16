@@ -6,17 +6,23 @@
 - Harden REF assignment and summary generation fallbacks.
 - Keep model selection reliability with pre-activation probe validation.
 - Keep notification-to-clipboard mirroring deterministic for user-visible events.
+- Prioritize graph/vision correctness per `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Phase 2 (Near-Term)
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
 - Add a critical telemetry allowlist that logs key failures even when `debug=false`.
 - Add fallback behavior when tray notification backend fails.
+- Add graph evidence extraction stage before final answer generation.
+- Add WORK-vs-FINAL interval consistency validation.
+- Expand graph retry triggers beyond current phrase matching.
+- Add dual OCR path and reconciliation for sign/symbol-sensitive math text.
 
 ## Phase 3 (Later)
 - Expand routing policy with confidence-based escalation.
 - Add targeted regression sets for graph domain/range edge cases.
 - Add config recovery backup on malformed `config.json` reset.
+- Add fixture-based vision regression suite for endpoint markers, asymptotes, discontinuities, and tick-scale edge cases.
 
 ## Non-Goals (Unless Explicitly Requested)
 - Architecture rewrites.
@@ -36,6 +42,7 @@
 
 ## Documentation Pointer
 - Full senior-engineer walkthrough and module/function map: `docs/ARCHITECTURE.md`.
+- Vision-specific accuracy audit report: `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Last Updated
 - 2026-02-16

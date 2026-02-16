@@ -21,6 +21,7 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 
 ## Documentation
 - Architecture walkthrough: `docs/ARCHITECTURE.md`
+- Vision accuracy audit: `docs/VISION_ACCURACY_AUDIT_2026_02.md`
 - Roadmap: `docs/ROADMAP.md`
 - Audit snapshot: `docs/ARCHITECTURE_REVIEW_2026_02.md`
 

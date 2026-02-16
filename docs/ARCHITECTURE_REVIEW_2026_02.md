@@ -15,18 +15,26 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
 - `AUTO` model route in tray is still placeholder only (`main.py:616`).
 - Telemetry remains fully gated by `debug` config (`utils.py:267`).
 - `status_copy_to_clipboard` config key currently has no runtime effect.
+- Vision/graph accuracy deep-dive documented in `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Key Risks Still Open
 - Metadata file access for STAR state is not lock-protected across threads.
 - Tray click behavior depends on pystray private internals.
 - Config corruption recovery resets to defaults without backup.
 - Regex-heavy output normalization can still over-correct edge-case math outputs.
+- Graph correctness currently relies on prompt compliance plus narrow text-triggered retry logic (`_needs_graph_domain_range_retry`).
+- No fixture-based graph image regression suite currently protects endpoint/tick/asymptote correctness.
 
 ## Recommended Next Steps
 1. Add module-level lock around STAR metadata read/modify/write sequences.
 2. Add always-on critical telemetry events for failures/cancellations independent of `debug`.
 3. Add fallback notification path when tray notify backend fails.
 4. Add targeted regression vectors for fragile output normalization cases.
+5. Implement top vision accuracy actions from `docs/VISION_ACCURACY_AUDIT_2026_02.md`:
+   - graph evidence extraction pass
+   - WORK-vs-FINAL interval consistency checks
+   - expanded graph retry triggers
+   - dual OCR reconciliation path
 
 ## Notes
 - This file remains an audit snapshot, not an operating contract.
