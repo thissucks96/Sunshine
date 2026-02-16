@@ -20,6 +20,22 @@
 - `master-bedrock` (`77bc30b`)
 - `first-graph-success` (`552a7ad`)
 
+## Stabilization Status
+- Current branch: `feature/graph-evidence-validator`
+- Working tree: clean
+- Test suite: 23/23 passing
+- Graph Evidence Validator: implemented and fully tested
+- Feature flags default: OFF
+- No runtime behavior mutation introduced
+
+## Branching Strategy
+- Active stabilization branch: `feature/graph-evidence-validator`
+- This branch supersedes `implement-auto-model-feature`
+- Validator must remain fully stable before new feature work
+- Auto-model will be implemented in a NEW branch created from this stabilized baseline
+- No auto-model development should occur on this branch
+- New branch creation requires explicit approval
+
 ---
 
 ## Scope
