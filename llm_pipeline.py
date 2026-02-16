@@ -1036,7 +1036,8 @@ def solve_pipeline(
 
     final_text = _extract_final_answer_text(out)
     if final_text and ref_prefix:
-        final_text = f"{ref_prefix}\n{final_text}"
+        # Keep parsed answer first so users see result immediately; append REF context at the bottom.
+        final_text = f"{final_text}\n{ref_prefix}"
 
     if _is_cancelled():
         log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_clipboard"})

@@ -123,7 +123,9 @@ class ModelAndClipboardTests(unittest.TestCase):
                 llm_pipeline.solve_pipeline(client=object(), input_obj="2 + 2 = ?")
 
         self.assertGreaterEqual(len(writes), 2)
-        self.assertTrue(writes[-1].startswith("* REF IMG: sample visual ref\n"))
+        self.assertTrue(writes[0].startswith("* REF IMG: sample visual ref\n"))
+        self.assertTrue(writes[-1].startswith("4\n"))
+        self.assertTrue(writes[-1].endswith("* REF IMG: sample visual ref"))
 
     def test_status_mirrors_structured_clipboard_payload(self):
         unique_message = "status mirror unit test"
