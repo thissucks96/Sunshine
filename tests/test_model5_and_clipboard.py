@@ -42,6 +42,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         sent = client.responses.calls[0]
         self.assertNotIn("temperature", sent)
         self.assertEqual(int(sent.get("max_output_tokens", 0)), 128)
+        self.assertEqual(((sent.get("reasoning") or {}).get("effort")), "low")
 
     def test_responses_text_keeps_temperature_for_non_gpt5(self):
         client = _FakeClient()
@@ -61,6 +62,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertIn("temperature", sent)
         self.assertAlmostEqual(float(sent.get("temperature", 0.0)), 0.2)
         self.assertEqual(int(sent.get("max_output_tokens", 0)), 48)
+        self.assertNotIn("reasoning", sent)
 
     def test_visual_ref_prefix_is_in_final_clipboard_entry(self):
         writes = []
@@ -183,6 +185,41 @@ class ModelAndClipboardTests(unittest.TestCase):
 
         self.assertEqual(len(writes), 1)
         self.assertIn("Solve canceled: model switched.", statuses)
+
+    def test_gpt5_uses_single_solve_attempt_even_if_retries_configured(self):
+        statuses = []
+        cfg = {
+            "retries": 3,
+            "request_timeout": 20,
+            "model": "gpt-5",
+            "temperature": 0.0,
+            "max_output_tokens": 2200,
+            "clipboard_history_settle_sec": 0.6,
+            "notify_on_complete": False,
+            "max_image_side": 4096,
+            "max_image_pixels": 16_000_000,
+        }
+        meta = {
+            "reference_active": False,
+            "reference_type": None,
+            "text_path": "",
+            "image_path": "",
+            "reference_summary": "",
+        }
+
+        with patch.object(llm_pipeline, "get_config", return_value=cfg), patch.object(
+            llm_pipeline, "load_starred_meta", return_value=meta
+        ), patch.object(llm_pipeline, "_responses_text", side_effect=Exception("boom")) as mock_call, patch.object(
+            llm_pipeline, "set_status", side_effect=statuses.append
+        ), patch.object(
+            llm_pipeline, "set_reference_active", return_value=None
+        ), patch.object(
+            llm_pipeline, "mark_prompt_success", return_value=None
+        ):
+            llm_pipeline.solve_pipeline(client=object(), input_obj="2 + 2 = ?")
+
+        self.assertEqual(mock_call.call_count, 1)
+        self.assertTrue(any("Solve failed: boom" in s for s in statuses))
 
 
 if __name__ == "__main__":
