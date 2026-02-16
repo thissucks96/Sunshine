@@ -55,6 +55,15 @@ Before proposing any runtime code modification, you MUST:
 - **History**: Any functional change MUST be logged in `docs/HISTORY.md`.
 - **Drift Zero Tolerance**: Architecture drift is not allowed. If the code diverges from the map, the map must be updated immediately.
 
+## Pre-Planning Synchronization Requirement
+
+Before proposing any runtime change, the agent MUST:
+1. Read `docs/executionMAP.md`.
+2. Read `docs/HISTORY.md`.
+3. Review `docs/relevant.md` for open investigations.
+4. Review the last 3–5 commits via `git log`.
+5. Explicitly state alignment before proposing changes.
+
 ---
 
 ## 1) Default Working Style

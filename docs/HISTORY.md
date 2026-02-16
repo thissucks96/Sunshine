@@ -1,3 +1,9 @@
+## 2026-02-16 — Investigating Graph Evidence Grounding
+
+- Discovered vertex hallucination under STARRED graph reference.
+- No runtime changes.
+- Beginning investigation and architectural reinforcement planning.
+
 ## 2026-02-16 — Execution Map Governance Formalized
 
 - Formalized repository governance to treat `docs/executionMAP.md` as the canonical execution reference.

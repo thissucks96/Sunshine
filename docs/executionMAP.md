@@ -59,6 +59,11 @@
 - `llm_pipeline.py:506`: `is_graph_problem = ("graph" in low) ...` (Text heuristic)
 - **Status:** Purely heuristic. No pre-solve model call.
 
+**Known Issues — Evidence Grounding Gap**
+- Under STARRED graph reference, summary generation can hallucinate graph details (e.g., incorrect vertex coordinates) while a later direct domain solve may still be correct.
+- Current graph retry is post-response and heuristic; it does not enforce strict evidence-first extraction before reasoning.
+- Forced visual extraction hook remains placeholder-only and does not currently prevent this failure mode.
+
 ### VI. FORCED VISUAL EXTRACTION STATUS
 
 - **Config:** `config.py:37`: `"ENABLE_FORCED_VISUAL_EXTRACTION": False`
