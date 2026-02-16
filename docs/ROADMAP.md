@@ -2,23 +2,21 @@
 
 ## Phase 1 (Current Stabilization)
 - Keep solve output deterministic and concise.
-- Preserve clipboard result integrity.
+- Preserve clipboard result integrity (full output + final answer flow).
 - Harden REF assignment and summary generation fallbacks.
-- Maintain model selection reliability and probe validation.
+- Keep model selection reliability with pre-activation probe validation.
+- Keep notification-to-clipboard mirroring deterministic for user-visible events.
 
 ## Phase 2 (Near-Term)
-- Add optional auto model routing (`AUTO`) for graph/vision-heavy tasks.
-- Keep routing behind a config flag and preserve current default behavior.
-- Add focused regression tests for:
-  - no-ref solve
-  - REF IMG solve
-  - REF TEXT solve
-  - graph domain/range edge cases
+- Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
+- Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
+- Add a critical telemetry allowlist that logs key failures even when `debug=false`.
+- Add fallback behavior when tray notification backend fails.
 
 ## Phase 3 (Later)
 - Expand routing policy with confidence-based escalation.
-- Add clearer runtime diagnostics for routing decisions.
-- Improve performance only where low-risk and measurable.
+- Add targeted regression sets for graph domain/range edge cases.
+- Add config recovery backup on malformed `config.json` reset.
 
 ## Non-Goals (Unless Explicitly Requested)
 - Architecture rewrites.
@@ -26,7 +24,7 @@
 - Broad UI redesign.
 
 ## Feature Intake & Decision Gate
-- New CEO-requested features should be classified by engineering before implementation:
+- New requests should be classified before implementation:
   - Recommended
   - Risky but doable
   - Not recommended now
@@ -34,7 +32,10 @@
   - Risk/impact summary
   - Better alternative (if any)
   - Smallest safe implementation slice
-- Prefer shipping reversible, low-risk increments before broader redesign.
+- Prefer reversible, low-risk increments.
+
+## Documentation Pointer
+- Full senior-engineer walkthrough and module/function map: `docs/ARCHITECTURE.md`.
 
 ## Last Updated
-- 2026-02-15
+- 2026-02-16
