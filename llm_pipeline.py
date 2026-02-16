@@ -308,6 +308,10 @@ def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
     return preview_text(t, 140)
 
 
+def _is_gpt5_family_model(model_name: str) -> bool:
+    return str(model_name or "").strip().lower().startswith("gpt-5")
+
+
 def _timeout_type_from_exception(exc: Exception) -> str:
     msg = str(exc or "").lower()
     if "connect timeout" in msg:
@@ -345,15 +349,17 @@ def _responses_text(
 ) -> str:
     rid = str(request_id or f"{flow_name}-{uuid.uuid4().hex[:10]}")
     req_started_unix = time.time()
-    req_started_mono = time.monotonic()
     api_attempt = 0
+    is_gpt5_family = _is_gpt5_family_model(str(model_name))
+    req_max_output_tokens = max(128, int(max_output_tokens)) if is_gpt5_family else max(16, int(max_output_tokens))
     req = {
         "model": model_name,
         "input": input_payload,
-        "temperature": temperature,
-        "max_output_tokens": max(16, int(max_output_tokens)),
+        "max_output_tokens": req_max_output_tokens,
         "timeout": timeout,
     }
+    if not is_gpt5_family:
+        req["temperature"] = temperature
     while True:
         api_attempt += 1
         call_started_mono = time.monotonic()
@@ -837,13 +843,45 @@ def _maybe_compact_discrete_domain_range(out: str) -> str:
     )
 
 
-def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
+def solve_pipeline(
+    client: OpenAI,
+    input_obj: Union[str, Image.Image],
+    cancel_event: Optional[Any] = None,
+    request_id: Optional[str] = None,
+) -> None:
+    solve_request_id = str(request_id or f"solve-{uuid.uuid4().hex[:10]}")
+
+    def _is_cancelled() -> bool:
+        return bool(cancel_event is not None and getattr(cancel_event, "is_set", lambda: False)())
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "start"})
+        return
+
     cfg = get_config()
     retries = int(cfg.get("retries", 1))
     timeout = int(cfg.get("request_timeout", 25))
-    model_name = cfg.get("model", MODEL)
+    model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
+    if _is_gpt5_family_model(model_name):
+        adjusted_timeout = max(timeout, 35)
+        if adjusted_timeout != timeout:
+            log_telemetry(
+                "model_timeout_adjusted",
+                {"request_id": solve_request_id, "model": model_name, "configured": timeout, "effective": adjusted_timeout},
+            )
+        timeout = adjusted_timeout
     temperature = float(cfg.get("temperature", 0.0))
     max_output_tokens = int(cfg.get("max_output_tokens", 2200))
+    log_telemetry(
+        "solve_request_start",
+        {
+            "request_id": solve_request_id,
+            "model": model_name,
+            "timeout_sec": timeout,
+            "retries": retries,
+            "max_output_tokens": max_output_tokens,
+        },
+    )
 
     meta = load_starred_meta()
     reference_active = bool(meta.get("reference_active", False))
@@ -919,6 +957,10 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 
     raw_output = ""
     for attempt in range(retries + 1):
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_request", "attempt": attempt + 1})
+            set_status("Solve canceled: model switched.")
+            return
         try:
             candidate = _responses_text(
                 client=client,
@@ -927,6 +969,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 timeout=timeout,
                 temperature=temperature,
                 max_output_tokens=max(16, int(max_output_tokens)),
+                flow_name="solve_main",
+                request_id=f"{solve_request_id}-main-{attempt + 1}",
             )
             if _needs_graph_domain_range_retry(input_obj, candidate):
                 retry_payload = _with_graph_domain_range_retry_hint(payload)
@@ -938,6 +982,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                     timeout=timeout,
                     temperature=temperature,
                     max_output_tokens=max(16, int(max_output_tokens)),
+                    flow_name="solve_graph_retry",
+                    request_id=f"{solve_request_id}-graph-{attempt + 1}",
                 )
                 if retry_output:
                     candidate = retry_output
@@ -948,13 +994,27 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 
             log_telemetry("solve_empty_response_retry", {"attempt": attempt + 1, "model": str(model_name)})
             if attempt == retries:
+                log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "empty_response"})
                 set_status("Empty model response.")
                 return
         except Exception as e:
+            if _is_cancelled():
+                log_telemetry(
+                    "solve_cancelled",
+                    {"request_id": solve_request_id, "stage": "exception", "attempt": attempt + 1, "error": str(e)},
+                )
+                set_status("Solve canceled: model switched.")
+                return
             log_telemetry("solve_retry", {"attempt": attempt + 1, "error": str(e)})
             if attempt == retries:
+                log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "exception", "error": str(e)})
                 set_status(f"Solve failed: {e}")
                 return
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "post_request"})
+        set_status("Solve canceled: model switched.")
+        return
 
     out = clean_output(apply_safe_symbols(raw_output)).strip()
     # Normalize inline FINAL ANSWER first so downstream section checks are stable.
@@ -966,13 +1026,23 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         set_status("Model returned empty output.")
         return
 
+    ref_prefix = ""
     if reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        if reference_summary:
-            out = f"* REF {reference_type}: {reference_summary}\n{out}"
-        else:
-            out = f"* REF {reference_type}\n{out}"
+        effective_summary = reference_summary
+        if not effective_summary:
+            effective_summary = "visual reference" if reference_type == REFERENCE_TYPE_IMG else "text reference"
+        ref_prefix = f"* REF {reference_type}: {effective_summary}"
+        out = f"{ref_prefix}\n{out}"
 
     final_text = _extract_final_answer_text(out)
+    if final_text and ref_prefix:
+        final_text = f"{ref_prefix}\n{final_text}"
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_clipboard"})
+        set_status("Solve canceled: model switched.")
+        return
+
     if final_text:
         # Entry 1: original full result. Entry 2: parsed final-answer text (no header).
         settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.6))
@@ -985,6 +1055,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         ok = _clipboard_write_retry(out)
     if ok:
         mark_prompt_success()
+        log_telemetry("solve_request_complete", {"request_id": solve_request_id, "model": model_name})
     notify_on_complete = bool(cfg.get("notify_on_complete", False))
     if ok and notify_on_complete:
         set_status("Solved → copied to clipboard")
@@ -995,6 +1066,8 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 def toggle_star_worker(client: OpenAI) -> None:
     cfg = get_config()
     model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
+    reference_helper_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
+    ref_model = reference_helper_model if _is_gpt5_family_model(model_name) else model_name
     meta = load_starred_meta()
 
     # Strict toggle behavior: active -> clear only (no parse/overwrite in same action).
@@ -1025,18 +1098,19 @@ def toggle_star_worker(client: OpenAI) -> None:
             ]
             label_raw = _responses_text(
                 client=client,
-                model_name=model_name,
+                model_name=ref_model,
                 input_payload=classify_payload,
                 timeout=int(cfg.get("classify_timeout", 8)),
                 temperature=0.0,
                 max_output_tokens=32,
+                flow_name="ref_classify",
             ).strip()
             label = _normalize_star_label(label_raw)
 
             # Fallback 1: retry classifier with a stable vision model if primary label is empty/ambiguous.
             if not label:
                 fallback_model = str(cfg.get("reference_classifier_model", "gpt-4o-mini") or "").strip()
-                if fallback_model and fallback_model != model_name:
+                if fallback_model and fallback_model != ref_model:
                     try:
                         fallback_raw = _responses_text(
                             client=client,
@@ -1045,6 +1119,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                             timeout=int(cfg.get("classify_timeout", 8)),
                             temperature=0.0,
                             max_output_tokens=32,
+                            flow_name="ref_classify_fallback",
                         ).strip()
                         label = _normalize_star_label(fallback_raw)
                         if label:
@@ -1070,11 +1145,12 @@ def toggle_star_worker(client: OpenAI) -> None:
                 ]
                 ocr_text_fallback = _responses_text(
                     client=client,
-                    model_name=model_name,
+                    model_name=ref_model,
                     input_payload=ocr_probe_payload,
                     timeout=int(cfg.get("ocr_timeout", 12)),
                     temperature=0.0,
                     max_output_tokens=1200,
+                    flow_name="ref_ocr_probe",
                 ).strip()
                 label = "TEXTUAL" if ocr_text_fallback else "VISUAL"
                 log_telemetry("ref_classifier_empty_fallback", {"resolved_label": label, "model": model_name})
@@ -1091,11 +1167,12 @@ def toggle_star_worker(client: OpenAI) -> None:
                     ]
                     ocr_text = _responses_text(
                         client=client,
-                        model_name=model_name,
+                        model_name=ref_model,
                         input_payload=ocr_payload,
                         timeout=int(cfg.get("ocr_timeout", 12)),
                         temperature=0.0,
                         max_output_tokens=1200,
+                        flow_name="ref_ocr",
                     ).strip()
                 if not ocr_text:
                     set_status("REF assign failed: OCR returned empty text")
@@ -1116,14 +1193,14 @@ def toggle_star_worker(client: OpenAI) -> None:
                 save_starred_meta(meta)
                 set_reference_active(True)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
-                set_status(f"REF SET TEXT ASSUMED: {summary}")
+                set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
             elif label == "VISUAL":
                 img_dir = _starred_base_dir()
                 img_path = os.path.join(img_dir, STARRED_IMG_FILE)
                 img.save(img_path, format="PNG")
                 summary = _summarize_visual_reference(
                     client=client,
-                    model_name=model_name,
+                    model_name=ref_model,
                     img_b64=img_b64,
                     timeout=int(cfg.get("classify_timeout", 8)),
                 )
@@ -1176,7 +1253,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                 save_starred_meta(meta)
                 set_reference_active(True)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
-                set_status(f"REF SET IMG ASSUMED: {summary}")
+                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary}")
             else:
                 # Guard path should be unreachable due fallback logic above.
                 set_status(f"REF assign failed: classifier returned '{label_raw or 'EMPTY'}'")

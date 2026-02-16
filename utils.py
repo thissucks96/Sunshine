@@ -233,10 +233,8 @@ def set_status(msg: str) -> None:
         _LAST_STATUS_TS = now
 
     log_telemetry("status", {"message": message})
+    safe_clipboard_write(message)
     cfg = get_config()
-    # Optional debug mirror only; default off so status updates do not overwrite solve results.
-    if bool(cfg.get("status_copy_to_clipboard", False)):
-        safe_clipboard_write(message)
     show_notification(message)
 
 

@@ -2,6 +2,7 @@ import ctypes
 import sys
 import threading
 import time
+import uuid
 from typing import Dict, Optional, Set
 
 import pyperclip
@@ -51,6 +52,11 @@ STOP_EVENT = threading.Event()
 _solve_lock = threading.Lock()
 _star_lock = threading.Lock()
 _model_lock = threading.Lock()
+_active_solve_state_lock = threading.Lock()
+_active_solve_client: Optional[OpenAI] = None
+_active_solve_cancel_event: Optional[threading.Event] = None
+_active_solve_id: str = ""
+_active_solve_model: str = ""
 
 _last_action_ts: Dict[str, float] = {}
 _debounce_lock = threading.Lock()
@@ -182,8 +188,9 @@ def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, requ
     timeout = int(cfg.get("request_timeout", 25))
     probe_timeout = max(5, min(timeout, 12))
     probe_model = str(call_model or model_name).strip() or str(model_name)
+    client: Optional[OpenAI] = None
     try:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, max_retries=0)
         resp = client.responses.create(
             model=probe_model,
             input=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
@@ -217,6 +224,12 @@ def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, requ
         reason = str(e) or "probe failed"
         log_telemetry("model_probe_failed", {"requested_model": model_name, "error": reason})
         return False, reason
+    finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
 
 
 def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional[Dict[str, object]]:
@@ -225,6 +238,52 @@ def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional
     except Exception as e:
         log_telemetry("config_persist_error", {"source": source, "error": str(e), "keys": sorted(list(changes.keys()))})
         return None
+
+
+def _register_active_solve(client: OpenAI, cancel_event: threading.Event, solve_id: str, model_name: str) -> None:
+    global _active_solve_client, _active_solve_cancel_event, _active_solve_id, _active_solve_model
+    with _active_solve_state_lock:
+        _active_solve_client = client
+        _active_solve_cancel_event = cancel_event
+        _active_solve_id = str(solve_id or "")
+        _active_solve_model = str(model_name or "")
+    log_telemetry("solve_active_registered", {"solve_id": solve_id, "model": model_name})
+
+
+def _clear_active_solve(solve_id: Optional[str] = None) -> None:
+    global _active_solve_client, _active_solve_cancel_event, _active_solve_id, _active_solve_model
+    cleared = False
+    with _active_solve_state_lock:
+        if solve_id and _active_solve_id and solve_id != _active_solve_id:
+            return
+        if _active_solve_client is not None or _active_solve_cancel_event is not None:
+            cleared = True
+        _active_solve_client = None
+        _active_solve_cancel_event = None
+        _active_solve_id = ""
+        _active_solve_model = ""
+    if cleared:
+        log_telemetry("solve_active_cleared", {"solve_id": solve_id or ""})
+
+
+def _cancel_active_solve(reason: str) -> bool:
+    with _active_solve_state_lock:
+        cancel_event = _active_solve_cancel_event
+        client = _active_solve_client
+        solve_id = _active_solve_id
+        model_name = _active_solve_model
+        if cancel_event is None:
+            return False
+        if cancel_event.is_set():
+            return False
+        cancel_event.set()
+    try:
+        if client is not None:
+            client.close()
+    except Exception as e:
+        log_telemetry("solve_cancel_close_error", {"solve_id": solve_id, "reason": reason, "error": str(e)})
+    log_telemetry("solve_cancel_requested", {"solve_id": solve_id, "model": model_name, "reason": reason})
+    return True
 
 
 def cycle_model_worker(icon) -> None:
@@ -255,6 +314,9 @@ def cycle_model_worker(icon) -> None:
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
             return
+
+        if old_model != new_model:
+            _cancel_active_solve(f"model_switch_hotkey:{old_model}->{new_model}")
 
         log_telemetry("model_changed", {"old": old_model, "new": new_model, "source": "hotkey"})
         if old_model != new_model:
@@ -287,6 +349,9 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
             return
+
+        if old_model != target_model:
+            _cancel_active_solve(f"model_switch_{source}:{old_model}->{target_model}")
 
         if old_model != target_model:
             log_telemetry("model_changed", {"old": old_model, "new": target_model, "source": source})
@@ -378,7 +443,12 @@ def _on_keyboard_event(event) -> None:
 
 def worker() -> None:
     if not _solve_lock.acquire(blocking=False):
+        log_telemetry("solve_skip_busy", {"reason": "solve_in_progress"})
+        set_status("Solve skipped: previous request still running.")
         return
+    solve_id = f"solve-{uuid.uuid4().hex[:10]}"
+    cancel_event = threading.Event()
+    client: Optional[OpenAI] = None
     try:
         cfg = get_config()
         api_key = resolve_api_key(cfg)
@@ -386,11 +456,14 @@ def worker() -> None:
             set_status("Missing API key (config.json or OPENAI_API_KEY).")
             return
 
-        client = OpenAI(api_key=api_key)
+        model_name = _active_model_name(cfg)
+        client = OpenAI(api_key=api_key, max_retries=0)
+        _register_active_solve(client, cancel_event, solve_id, model_name)
+        log_telemetry("solve_worker_start", {"solve_id": solve_id, "model": model_name})
         raw_clip, _ = safe_clipboard_read()
         if isinstance(raw_clip, Image.Image):
             img = normalize_image_for_api(raw_clip, cfg)
-            solve_pipeline(client, img)
+            solve_pipeline(client, img, cancel_event=cancel_event, request_id=solve_id)
             return
 
         try:
@@ -399,31 +472,43 @@ def worker() -> None:
             text = ""
 
         if text:
-            solve_pipeline(client, text)
+            solve_pipeline(client, text, cancel_event=cancel_event, request_id=solve_id)
         else:
             set_status("No image or text found on clipboard.")
     except Exception as e:
-        log_telemetry("worker_crash", {"error": str(e)})
+        log_telemetry("worker_crash", {"solve_id": solve_id, "error": str(e)})
         set_status(f"Worker error: {e}")
     finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+        _clear_active_solve(solve_id)
         _solve_lock.release()
 
 
 def star_worker() -> None:
     if not _star_lock.acquire(blocking=False):
         return
+    client: Optional[OpenAI] = None
     try:
         cfg = get_config()
         api_key = resolve_api_key(cfg)
         if not api_key:
             set_status("Missing API key; STAR unavailable.")
             return
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, max_retries=0)
         toggle_star_worker(client)
     except Exception as e:
         log_telemetry("star_worker_crash", {"error": str(e)})
         set_status(f"STAR error: {e}")
     finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
         _star_lock.release()
 
 
