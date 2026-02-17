@@ -1,0 +1,9 @@
+Final Light-Mode Tiered Accuracy Report
+Easy: 10/10 = 100.00%
+Medium: 15/15 = 100.00%
+Hard: 8/8 = 100.00%
+Overall: 33/33 = 100.00%
+
+Easy failures: 0
+Medium failures: 0
+Hard failures: 0

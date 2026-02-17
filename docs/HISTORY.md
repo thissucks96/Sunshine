@@ -1,3 +1,21 @@
+## 2026-02-17 — Guide-Line Override Prompt + 33/33 Light-Mode Victory Run
+
+- Runtime prompt update in `llm_pipeline.py`:
+  - Added mandatory guide-line override wording to both:
+    - `GRAPH_EVIDENCE_PROMPT_APPEND`
+    - `GRAPH_EVIDENCE_EXTRACTION_PROMPT`
+  - New rule requires extracting `KEY_POINTS` from vertical/horizontal guide-line intersections on the curve, even without a drawn dot.
+- File (14) verification:
+  - Standard extraction after patch produced `KEY_POINTS: (x=5, y=13)` in validation run.
+- Final light-mode benchmark rerun (dark-mode excluded):
+  - `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_221723.json`
+  - `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_221723.txt`
+  - Result: `33/33` (`100.00%`)
+- Output contract status unchanged:
+  - `WORK:` / `FINAL ANSWER:` unchanged
+  - graph retry remains disabled
+  - normalization and clipboard flow unchanged
+
 ## 2026-02-17 — File 14 Forensic Diagnostic (Raw Reasoning Trace)
 
 - Added targeted diagnostic script: `tests/diagnose_file_14.py`.
