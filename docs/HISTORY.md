@@ -1,3 +1,18 @@
+## 2026-02-17 — Compound Inequality UI Formatter (Small-Viewport Readability)
+
+- Runtime formatting update in solve output normalization:
+  - Added a post-normalization formatter that detects standard two-part compound inequalities (`... or ...`) and rewrites `WORK` into a compact, wrapped layout.
+  - Formatter now emits grouped sections:
+    - `Solve <inequality #1>:`
+    - `Solve <inequality #2>:`
+    - explicit union line (`OR means union: ...`)
+    - concise coverage explanation
+    - `Question Context` moved to the bottom of `WORK`
+- Contract safety:
+  - `FINAL ANSWER:` header remains unchanged and remains the final section.
+  - Clipboard final-answer extraction remains unchanged and validated.
+  - Graph retry, solve loop, and graph-mode behavior are unchanged.
+
 ## 2026-02-17 — Tray Prompt Channel Toggles (Window/Clipboard) With Permanent Activity Log
 
 - Runtime behavior update:

@@ -1276,6 +1276,243 @@ def _normalize_final_answer_block(out: str) -> str:
     return "\n".join(normalized).strip()
 
 
+def _parse_linear_inequality(expr: str) -> Optional[Dict[str, Union[int, float, str]]]:
+    e = str(expr or "").strip()
+    m = re.match(
+        r"(?i)^\s*([+-]?\d*)\s*x\s*([+-]\s*\d+)?\s*(<=|>=|<|>|≤|≥)\s*([+-]?\d+(?:\.\d+)?)\s*$",
+        e,
+    )
+    if not m:
+        return None
+    coeff_raw = (m.group(1) or "").replace(" ", "")
+    if coeff_raw in ("", "+"):
+        coeff = 1
+    elif coeff_raw == "-":
+        coeff = -1
+    else:
+        try:
+            coeff = int(coeff_raw)
+        except Exception:
+            return None
+
+    const_raw = (m.group(2) or "").replace(" ", "")
+    const = int(const_raw) if const_raw else 0
+    comp = (m.group(3) or "").strip().replace("≤", "<=").replace("≥", ">=")
+    rhs = float(m.group(4))
+    rhs = int(rhs) if abs(rhs - round(rhs)) < 1e-9 else rhs
+    return {"coeff": coeff, "const": const, "comp": comp, "rhs": rhs}
+
+
+def _format_num_simple(value: Union[int, float]) -> str:
+    try:
+        v = float(value)
+    except Exception:
+        return str(value)
+    if abs(v - round(v)) < 1e-9:
+        return str(int(round(v)))
+    return f"{v:.6f}".rstrip("0").rstrip(".")
+
+
+def _clean_expr_segment(segment: str) -> str:
+    s = str(segment or "").strip()
+    s = s.rstrip(".")
+    s = re.sub(r"^\s*-\s+", "", s)
+    s = re.sub(r"^\s*\*\s+", "", s)
+    s = re.sub(r"^\s*\d+\)\s*", "", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
+def _reason_for_inequality_step(prev_expr: str, next_expr: str) -> str:
+    prev = _parse_linear_inequality(prev_expr)
+    nxt = _parse_linear_inequality(next_expr)
+    if not prev or not nxt:
+        return "Rearrange inequality"
+
+    prev_coeff = int(prev["coeff"])
+    prev_const = int(prev["const"])
+    nxt_coeff = int(nxt["coeff"])
+    nxt_const = int(nxt["const"])
+    prev_comp = str(prev["comp"])
+    nxt_comp = str(nxt["comp"])
+
+    if prev_coeff == nxt_coeff and prev_const != 0 and nxt_const == 0:
+        if prev_const > 0:
+            return f"Subtract {abs(prev_const)} from both sides"
+        return f"Add {abs(prev_const)} to both sides"
+
+    if prev_const == 0 and nxt_const == 0 and prev_coeff != 0 and nxt_coeff == 1:
+        reason = f"Divide by {prev_coeff}"
+        if prev_comp != nxt_comp and prev_coeff < 0:
+            reason += " (flip inequality)"
+        return reason
+
+    return "Rearrange inequality"
+
+
+def _parse_simple_solution_expr(expr: str) -> Optional[Dict[str, Union[str, float]]]:
+    s = _clean_expr_segment(expr).replace("≤", "<=").replace("≥", ">=")
+    m = re.match(r"(?i)^\s*x\s*(<=|>=|<|>)\s*([+-]?\d+(?:\.\d+)?)\s*$", s)
+    if not m:
+        return None
+    return {"comp": m.group(1), "value": float(m.group(2))}
+
+
+def _format_solution_expr(sol: Dict[str, Union[str, float]]) -> str:
+    return f"x {sol['comp']} {_format_num_simple(float(sol['value']))}"
+
+
+def _broader_solution(
+    left: Dict[str, Union[str, float]],
+    right: Dict[str, Union[str, float]],
+) -> Optional[Dict[str, Union[str, float]]]:
+    comp_l = str(left["comp"])
+    comp_r = str(right["comp"])
+    val_l = float(left["value"])
+    val_r = float(right["value"])
+
+    gt_set = {">", ">="}
+    lt_set = {"<", "<="}
+    if comp_l in gt_set and comp_r in gt_set:
+        # Smaller lower-bound is broader.
+        if val_l < val_r:
+            return left
+        if val_r < val_l:
+            return right
+        # Same boundary: >= is broader than >
+        if comp_l == ">=" and comp_r == ">":
+            return left
+        if comp_r == ">=" and comp_l == ">":
+            return right
+        return left
+
+    if comp_l in lt_set and comp_r in lt_set:
+        # Larger upper-bound is broader.
+        if val_l > val_r:
+            return left
+        if val_r > val_l:
+            return right
+        # Same boundary: <= is broader than <
+        if comp_l == "<=" and comp_r == "<":
+            return left
+        if comp_r == "<=" and comp_l == "<":
+            return right
+        return left
+
+    return None
+
+
+def _split_instruction_sentences(line: str) -> List[str]:
+    text = str(line or "").strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in re.split(r"(?<=[.?!])\s+", text) if p.strip()]
+    return parts or [text]
+
+
+def _maybe_format_compound_inequality_ui(out: str) -> str:
+    text = str(out or "").strip()
+    if not text:
+        return text
+    if "WORK:" not in text or "FINAL ANSWER:" not in text:
+        return text
+
+    lines = text.splitlines()
+    work_idx = -1
+    final_idx = -1
+    for i, line in enumerate(lines):
+        s = line.strip().upper()
+        if work_idx == -1 and s == "WORK:":
+            work_idx = i
+        if s.startswith("FINAL ANSWER:"):
+            final_idx = i
+            break
+    if work_idx <= 0 or final_idx <= work_idx:
+        return text
+
+    pre_lines = [ln.strip() for ln in lines[:work_idx] if ln.strip()]
+    work_lines = [ln.strip() for ln in lines[work_idx + 1:final_idx] if ln.strip()]
+    final_inline = lines[final_idx].strip()[len("FINAL ANSWER:"):].strip()
+    final_lines = []
+    if final_inline:
+        final_lines.append(final_inline)
+    final_lines.extend([ln.strip() for ln in lines[final_idx + 1:] if ln.strip()])
+
+    pre_joined = " ".join(pre_lines).lower()
+    if "compound inequalit" not in pre_joined and " or " not in pre_joined:
+        return text
+
+    ineq_line = ""
+    for ln in reversed(pre_lines):
+        low = ln.lower()
+        if " or " in low and re.search(r"[<>≤≥]", ln):
+            ineq_line = ln
+            break
+    if not ineq_line:
+        return text
+
+    inequalities = [seg.strip() for seg in re.split(r"(?i)\s+or\s+", ineq_line) if seg.strip()]
+    if len(inequalities) < 2:
+        return text
+
+    step_lines = [ln for ln in work_lines if "=>" in ln and "union" not in ln.lower()]
+    if len(step_lines) < len(inequalities):
+        return text
+
+    formatted: List[str] = []
+    solved_expressions: List[str] = []
+
+    for idx, ineq in enumerate(inequalities):
+        raw_step = step_lines[idx]
+        transitions = [_clean_expr_segment(seg) for seg in raw_step.split("=>") if _clean_expr_segment(seg)]
+        if len(transitions) < 2:
+            return text
+        solved_expressions.append(transitions[-1])
+
+        formatted.append(f"Solve {ineq}:")
+        for i in range(len(transitions) - 1):
+            next_expr = transitions[i + 1]
+            reason = _reason_for_inequality_step(transitions[i], transitions[i + 1])
+            formatted.append(f"{next_expr:<22} -> {reason}")
+        formatted.append("")
+
+    sol_a = _parse_simple_solution_expr(solved_expressions[0])
+    sol_b = _parse_simple_solution_expr(solved_expressions[1])
+    broader = _broader_solution(sol_a, sol_b) if sol_a and sol_b else None
+
+    if sol_a and sol_b and broader:
+        a_txt = _format_solution_expr(sol_a)
+        b_txt = _format_solution_expr(sol_b)
+        broad_txt = _format_solution_expr(broader)
+        narrow_txt = b_txt if broad_txt == a_txt else a_txt
+        formatted.append(f"OR means union: {a_txt} or {b_txt} = {broad_txt}")
+        formatted.append(f"{broad_txt} covers all values in {narrow_txt}")
+        formatted.append(f"so larger solution {broad_txt} is the final answer.")
+    elif sol_a and sol_b:
+        formatted.append(f"OR means union: {_format_solution_expr(sol_a)} or {_format_solution_expr(sol_b)}")
+        formatted.append("combine both solution sets to get the final union.")
+    else:
+        union_line = next((ln for ln in work_lines if "union" in ln.lower()), "")
+        if union_line:
+            formatted.append(_clean_expr_segment(union_line))
+
+    context_lines: List[str] = []
+    for ln in pre_lines:
+        if ln == ineq_line:
+            continue
+        context_lines.extend(_split_instruction_sentences(ln))
+    context_lines.append(ineq_line)
+    if context_lines:
+        formatted.append("")
+        formatted.append("Question Context:")
+        for ln in context_lines:
+            formatted.append(f"- {ln}")
+
+    formatted.append("FINAL ANSWER:")
+    formatted.extend(final_lines if final_lines else ["No Solution"])
+    return "\n".join(formatted).strip()
+
+
 def _section_between(text: str, start_label: str, end_label: Optional[str] = None) -> str:
     s = str(text or "")
     m_start = re.search(rf"(?im)^\s*{re.escape(start_label)}\s*:?\s*$", s)
@@ -2063,6 +2300,7 @@ def solve_pipeline(
     out = _maybe_enforce_points_to_plot(out)
     out = _maybe_enforce_domain_range_intervals(out)
     out = _maybe_compact_discrete_domain_range(out)
+    out = _maybe_format_compound_inequality_ui(out)
     if not out:
         set_status("Model returned empty output.")
         return

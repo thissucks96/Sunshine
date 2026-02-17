@@ -222,6 +222,9 @@
 - `llm_pipeline.py:585`: `clean_output`
 - `llm_pipeline.py:696`: `_normalize_final_answer_block`
 - `llm_pipeline.py:1189`: `_maybe_enforce_domain_range_intervals`
+- `llm_pipeline.py`: `_maybe_format_compound_inequality_ui`
+  - Detects common two-part compound inequality solves and rewrites `WORK` into compact per-inequality blocks for small-view UI readability.
+  - Preserves `FINAL ANSWER:` as terminal section so final-answer extraction/clipboard flow remain stable.
 - **Contract:** `WORK` / `FINAL ANSWER` format is preserved strictly.
 
 ### X. CLIPBOARD WRITE SYSTEM

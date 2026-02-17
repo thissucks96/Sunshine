@@ -269,6 +269,26 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertEqual(len(fake_icon.calls), 1)
         self.assertEqual(len(writes), 0)
 
+    def test_compound_inequality_output_is_formatted_for_small_ui(self):
+        raw = (
+            "Solve each of the given compound inequalities. Enter your answers using interval notation.\n\n"
+            "-7x + 4 < 18 or -3x - 5 < -32\n"
+            "WORK:\n"
+            "-7x + 4 < 18 => -7x < 14 => x > -2.\n"
+            "-3x - 5 < -32 => -3x < -27 => x > 9.\n"
+            "Union: x > -2 or x > 9 => x > -2.\n"
+            "FINAL ANSWER:\n"
+            "(-2, ∞)"
+        )
+        formatted = llm_pipeline._maybe_format_compound_inequality_ui(raw)
+        self.assertIn("Solve -7x + 4 < 18:", formatted)
+        self.assertIn("Subtract 4 from both sides", formatted)
+        self.assertIn("Divide by -7 (flip inequality)", formatted)
+        self.assertIn("OR means union: x > -2 or x > 9 = x > -2", formatted)
+        self.assertIn("Question Context:", formatted)
+        self.assertIn("FINAL ANSWER:\n(-2, ∞)", formatted)
+        self.assertEqual("(-2, ∞)", llm_pipeline._extract_final_answer_text(formatted))
+
     def test_cancelled_between_clipboard_writes_skips_final_write(self):
         writes = []
         statuses = []
