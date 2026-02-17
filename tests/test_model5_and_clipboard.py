@@ -284,7 +284,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertIn("Solve -7x + 4 < 18:", formatted)
         self.assertIn("Subtract 4 from both sides", formatted)
         self.assertIn("Divide by -7 (flip inequality)", formatted)
-        self.assertIn("OR means union: x > -2 or x > 9 = x > -2", formatted)
+        self.assertIn("Since x > 9 is a subset of x > -2, the union is x > -2.", formatted)
         self.assertIn("Question Context:", formatted)
         self.assertIn("FINAL ANSWER:\n(-2, ∞)", formatted)
         self.assertEqual("(-2, ∞)", llm_pipeline._extract_final_answer_text(formatted))
@@ -309,7 +309,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertIn("Subtract 4 from both sides", formatted)
         self.assertIn("Solve -3x - 5 < -32:", formatted)
         self.assertIn("Add 5 to both sides", formatted)
-        self.assertIn("OR means union: x > -2 or x > 9 = x > -2", formatted)
+        self.assertIn("Since x > 9 is a subset of x > -2, the union is x > -2.", formatted)
         self.assertIn("Question Context:", formatted)
         self.assertEqual("(-2, ∞)", llm_pipeline._extract_final_answer_text(formatted))
 

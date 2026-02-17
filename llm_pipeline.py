@@ -1319,6 +1319,15 @@ def _normalize_math_compare_text(expr: str) -> str:
     return s.strip().lower()
 
 
+def _prettify_math_display(expr: str) -> str:
+    s = _clean_expr_segment(expr)
+    s = s.replace("≤", "<=").replace("≥", ">=")
+    s = re.sub(r"(?<=\w)([+-])(?=\w)", r" \1 ", s)
+    s = re.sub(r"\s*(<=|>=|<|>)\s*", r" \1 ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def _clean_expr_segment(segment: str) -> str:
     s = str(segment or "").strip()
     s = s.rstrip(".")
@@ -1365,7 +1374,7 @@ def _parse_simple_solution_expr(expr: str) -> Optional[Dict[str, Union[str, floa
 
 
 def _format_solution_expr(sol: Dict[str, Union[str, float]]) -> str:
-    return f"x {sol['comp']} {_format_num_simple(float(sol['value']))}"
+    return _prettify_math_display(f"x {sol['comp']} {_format_num_simple(float(sol['value']))}")
 
 
 def _broader_solution(
@@ -1511,9 +1520,9 @@ def _maybe_format_compound_inequality_ui(out: str) -> str:
         transitions = transitions_by_ineq[idx]
         solved_expressions.append(transitions[-1])
 
-        formatted.append(f"Solve {ineq}:")
+        formatted.append(f"Solve {_prettify_math_display(ineq)}:")
         for i in range(len(transitions) - 1):
-            next_expr = transitions[i + 1]
+            next_expr = _prettify_math_display(transitions[i + 1])
             reason = _reason_for_inequality_step(transitions[i], transitions[i + 1])
             formatted.append(f"{next_expr:<22} -> {reason}")
         formatted.append("")
@@ -1527,9 +1536,7 @@ def _maybe_format_compound_inequality_ui(out: str) -> str:
         b_txt = _format_solution_expr(sol_b)
         broad_txt = _format_solution_expr(broader)
         narrow_txt = b_txt if broad_txt == a_txt else a_txt
-        formatted.append(f"OR means union: {a_txt} or {b_txt} = {broad_txt}")
-        formatted.append(f"{broad_txt} covers all values in {narrow_txt}")
-        formatted.append(f"so larger solution {broad_txt} is the final answer.")
+        formatted.append(f"Since {narrow_txt} is a subset of {broad_txt}, the union is {broad_txt}.")
     elif sol_a and sol_b:
         formatted.append(f"OR means union: {_format_solution_expr(sol_a)} or {_format_solution_expr(sol_b)}")
         formatted.append("combine both solution sets to get the final union.")
@@ -1543,7 +1550,7 @@ def _maybe_format_compound_inequality_ui(out: str) -> str:
         if ln == ineq_line:
             continue
         context_lines.extend(_split_instruction_sentences(ln))
-    context_lines.append(ineq_line)
+    context_lines.append(_prettify_math_display(ineq_line))
     if context_lines:
         formatted.append("")
         formatted.append("Question Context:")
