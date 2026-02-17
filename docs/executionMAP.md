@@ -150,6 +150,7 @@
 - Dark-mode recovery behavior:
   - when dark-mode is detected, extraction runs with additional forensic guidance
   - a second candidate pass requests `KEY_POINT_CANDIDATES` and reranks to a final `KEY_POINTS` coordinate
+  - candidate coordinates are preprocessed with snap-to-integer threshold (`0.15`) before consensus/median rerank
   - final coordinate is upserted into the `GRAPH_EVIDENCE` block only if the updated block remains parser-valid
 
 **Solve-Time Usage**
@@ -163,6 +164,7 @@
   - Tiered benchmark baseline: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_204619.json` (Easy 100.00%, Medium 75.00%, Hard 40.00%).
   - Tiered benchmark after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (Easy 100.00%, Medium 87.50%, Hard 60.00%).
   - Hard-tier-only run after conditional dark-mode recovery: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_210654.json` (Hard 70.00%).
+  - Hard-tier rerun after integer snapping/grid-bias patch: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_211155.json` (Hard 70.00%; dark-mode `(2)/(3)/(5)` drift remains).
 
 ### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
 

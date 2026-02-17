@@ -173,6 +173,7 @@ DARK_MODE_KEYPOINT_CANDIDATES_PROMPT = (
     "- Mentally invert low-contrast visuals.\n"
     "- Locate origin and calibrate scale from visible labels before reading coordinates.\n"
     "- Ignore faint background artifacts and overlays.\n"
+    "Standard math problems align key points to integer grid intersections. Aggressively favor integer coordinates (e.g., (2, -2)) over fractional ones (e.g., (2.1, -1.9)) unless the point clearly lies between grid lines. Treat minor pixel deviations as noise.\n"
     "If a query anchor is visible (for example f(2), g(-2), h(x)=13), prioritize that key point.\n"
     "Return exactly one line and nothing else in this format:\n"
     "KEY_POINT_CANDIDATES: (x=<num>, y=<num>); (x=<num>, y=<num>); (x=<num>, y=<num>)\n"
@@ -507,11 +508,26 @@ def _rerank_candidate_axis(values: List[float]) -> Optional[float]:
     return float(statistics.median(values))
 
 
+def _snap_value(val: float, threshold: float = 0.15) -> float:
+    nearest = round(float(val))
+    if abs(float(val) - nearest) <= float(threshold):
+        return float(nearest)
+    return float(val)
+
+
 def _rerank_dark_mode_key_point(candidates: List[Dict[str, float]]) -> Optional[Dict[str, float]]:
     if len(candidates) < 2:
         return None
-    xs = [float(c.get("x")) for c in candidates if "x" in c]
-    ys = [float(c.get("y")) for c in candidates if "y" in c]
+    snapped_candidates: List[Dict[str, float]] = []
+    for c in candidates:
+        if "x" not in c or "y" not in c:
+            continue
+        snapped_candidates.append({
+            "x": _snap_value(float(c.get("x")), threshold=0.15),
+            "y": _snap_value(float(c.get("y")), threshold=0.15),
+        })
+    xs = [float(c.get("x")) for c in snapped_candidates if "x" in c]
+    ys = [float(c.get("y")) for c in snapped_candidates if "y" in c]
     x_final = _rerank_candidate_axis(xs)
     y_final = _rerank_candidate_axis(ys)
     if x_final is None or y_final is None:

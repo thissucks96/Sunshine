@@ -27,6 +27,11 @@ class DarkModeRecoveryTests(unittest.TestCase):
         self.assertAlmostEqual(2.0, reranked["x"])
         self.assertAlmostEqual(-2.0, reranked["y"])
 
+    def test_snap_value_threshold(self):
+        self.assertEqual(2.0, llm_pipeline._snap_value(2.1, threshold=0.15))
+        self.assertEqual(-2.0, llm_pipeline._snap_value(-1.9, threshold=0.15))
+        self.assertEqual(2.2, llm_pipeline._snap_value(2.2, threshold=0.15))
+
     def test_upsert_graph_evidence_field_line_inserts_before_scale(self):
         text = (
             "GRAPH_EVIDENCE:\n"

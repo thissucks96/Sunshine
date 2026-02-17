@@ -1,3 +1,17 @@
+## 2026-02-17 — Integer Snapping + Grid-Bias Prompt For Dark-Mode Recovery
+
+- Runtime update in `llm_pipeline.py`:
+  - Added `_snap_value(val, threshold=0.15)` and applied snapping to candidate x/y values before dark-mode key-point reranking.
+  - Preserved existing consensus/median rerank logic after snap preprocessing.
+  - Added explicit grid-bias sentence to dark-mode key-point candidate prompt:
+    - aggressively favor integer grid intersections unless point clearly lies between grid lines.
+- Verification artifacts:
+  - Failed-file rerun (`dark mode (2)/(3)/(5)`): `tests/GRAPH_CHECKER/darkmode_failedfiles_verify_20260216_211114.txt`
+    - Result: `0/3` corrected in this pass.
+  - Hard-tier rerun: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_211155.json`
+    - Result: `70.00%` (7/10), below 85% target.
+    - Remaining failures are coordinate drift on dark-mode `(2)`, `(3)`, `(5)`.
+
 ## 2026-02-17 — Conditional Forensic Recovery For Dark-Mode Key-Points
 
 - Runtime enhancement in `llm_pipeline.py` for dark-mode graph extraction recovery:
