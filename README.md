@@ -9,6 +9,10 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 2. Copy a problem to clipboard (text or image/screenshot).
 3. Press `ctrl+shift+x` to solve (or use tray `Solve Now`).
 4. Read status updates from tray notifications.
+   - Optional tray controls:
+     - `WINDOW PROMPTS ON/OFF` controls tray/message-box prompts.
+     - `CLIPBOARD PROMPTS ON/OFF` controls structured status/error clipboard mirroring.
+   - `app_activity.log` is always on and remains the permanent runtime log sink.
 5. Paste result where needed:
    - the app writes full solve output first
    - then writes parsed final answer to clipboard
@@ -80,6 +84,9 @@ Core controls:
 - Cycle model hotkey: `ctrl+shift+m`
 - Quit hotkey: `ctrl+shift+q`
 - Graph mode toggle: tray menu `GRAPH MODE ON/OFF`
+- Prompt channel toggles:
+  - tray menu `WINDOW PROMPTS ON/OFF`
+  - tray menu `CLIPBOARD PROMPTS ON/OFF`
 
 ## Documentation
 - Architecture walkthrough: `docs/ARCHITECTURE.md`

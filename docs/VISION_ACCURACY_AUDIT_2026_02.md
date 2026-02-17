@@ -33,6 +33,13 @@
 - Goal:
   - scale beyond fixed fixture sets and detect regression on broader graph distributions without manual labeling.
 
+0.4 Prompt Channel Runtime Controls (Non-Vision Behavior)
+- Added tray controls for status/error prompt routing:
+  - `WINDOW PROMPTS ON/OFF`
+  - `CLIPBOARD PROMPTS ON/OFF`
+- `app_activity.log` remains always-on.
+- Note: this does not change classifier/extractor accuracy paths; it only changes runtime status/error fanout channels.
+
 1 Vision Data Flow
 1. Image capture starts in `main.py:444` (`def worker`). The worker reads clipboard via `safe_clipboard_read()`.
    Anchor: `main.py:463`, search token `raw_clip, _ = safe_clipboard_read()`.

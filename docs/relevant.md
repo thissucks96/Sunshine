@@ -1,3 +1,18 @@
+## 2026-02-17 — Prompt Channel Toggle Controls (Runtime)
+
+Description:
+Added tray controls for status/error prompt routing without changing solve behavior.
+
+Implemented:
+- `WINDOW PROMPTS ON/OFF` controls tray notifications and message-box prompts.
+- `CLIPBOARD PROMPTS ON/OFF` controls structured status/error clipboard mirroring.
+- `app_activity.log` remains always-on and is the permanent runtime log sink.
+
+Scope Safety:
+- `WORK:` / `FINAL ANSWER:` contract unchanged.
+- Output normalization and solve retry behavior unchanged.
+- Graph retry remains disabled.
+
 ## 2026-02-17 — Synthetic Golden Dataset Planning (Next Module)
 
 Description:

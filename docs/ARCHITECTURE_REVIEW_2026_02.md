@@ -48,6 +48,10 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
 - REF assignment has classifier and OCR-based fallback paths.
 - Unified graph mode now uses the same REF flow and caches graph evidence at REF-prime time.
 - Status and popup notifications are centrally mirrored to structured clipboard payloads.
+- Prompt-channel routing is now user-togglable from tray:
+  - `WINDOW PROMPTS ON/OFF`
+  - `CLIPBOARD PROMPTS ON/OFF`
+  - `app_activity.log` remains permanent and always-on.
 - Solve cancellation checks are present at key pre/post request and clipboard stages.
 
 ## Accuracy Notes

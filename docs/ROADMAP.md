@@ -66,6 +66,10 @@
 - Harden REF assignment and summary generation fallbacks.
 - Keep model selection reliability with pre-activation probe validation.
 - Keep notification-to-clipboard mirroring deterministic for user-visible events.
+- Keep prompt channel controls stable:
+  - tray toggle for window prompts
+  - tray toggle for clipboard prompt mirroring
+  - always-on `app_activity.log` as the permanent record
 - Prioritize graph/vision correctness per `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Phase 2 (Near-Term)

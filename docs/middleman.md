@@ -17,6 +17,7 @@ Then wait for explicit user approval before producing the final Codex instructio
   * Graph Evidence Validator architecture and design documentation normalized and expanded
   * STARRED REFERENCE backend behavior audited and documented
   * Unified graph mode runtime implemented in active branch (`graph_mode` + cached graph evidence)
+  * Prompt channel tray controls implemented (`WINDOW PROMPTS ON/OFF`, `CLIPBOARD PROMPTS ON/OFF`) with always-on `app_activity.log`
 * Current Phase: Graph-mode stabilization and accuracy hardening
 
 ## Priorities

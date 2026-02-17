@@ -21,3 +21,8 @@
 - Current fixture limitation:
   - existing static datasets can miss long-tail graph variants.
   - planned mitigation is synthetic golden-dataset generation with known equation/domain-range keys and controlled artifact injection.
+
+## Prompt Channel Controls
+
+- Window prompts and clipboard status/error mirroring are independently toggleable from tray.
+- `app_activity.log` remains always-on by design and cannot be disabled from tray controls.
