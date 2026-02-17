@@ -130,6 +130,9 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
     "  CONFIDENCE: <0.0-1.0>\n"
 )
 
+# Graph evidence extraction is intentionally pinned to the strongest visual model.
+GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
+
 FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "MANDATORY VISUAL EXTRACTION STEP:\n"
     "Before computing any answer, explicitly extract ALL of the following in your WORK section:\n"
@@ -1724,7 +1727,7 @@ def toggle_star_worker(client: OpenAI) -> None:
             graph_evidence = extract_graph_evidence(
                 image_path=img_path,
                 client=client,
-                model_name=ref_model,
+                model_name=GRAPH_EVIDENCE_EXTRACTION_MODEL,
                 timeout=int(cfg.get("ocr_timeout", 12)),
             )
             meta["graph_evidence"] = graph_evidence
@@ -1736,6 +1739,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                 {
                     "evidence_valid": _is_valid_graph_evidence_text(graph_evidence),
                     "summary_length": len(summary),
+                    "extraction_model": GRAPH_EVIDENCE_EXTRACTION_MODEL,
                 },
             )
             if _is_valid_graph_evidence_text(graph_evidence):

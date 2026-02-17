@@ -114,6 +114,8 @@
 **A. Activation**
 - `main.py:502`: `toggle_star_worker`
 - Graph mode uses the same REF toggle flow and graph mode ON is controlled by tray entry `GRAPH MODE ON/OFF`.
+**A1. Graph Extraction Model Pin**
+- During graph-mode image REF priming, graph evidence extraction is pinned to `gpt-5.2` for strongest visual parsing before solve-time reasoning.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
 - Unified metadata fields: `graph_mode`, `graph_evidence`, `last_primed_ts`.

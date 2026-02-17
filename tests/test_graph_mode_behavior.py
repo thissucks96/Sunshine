@@ -58,17 +58,17 @@ class GraphModeBehaviorTests(unittest.TestCase):
             llm_pipeline, "_summarize_visual_reference", return_value="graph panel reference"
         ), patch.object(
             llm_pipeline, "extract_graph_evidence", return_value=_VALID_GRAPH_EVIDENCE
-        ), patch.object(
-            llm_pipeline, "set_reference_active", return_value=None
-        ), patch.object(
+        ) as mock_extract, patch.object(
             llm_pipeline, "set_status", return_value=None
-        ):
+        ) as mock_set_status:
             meta = llm_pipeline.load_starred_meta()
             meta["graph_mode"] = True
             llm_pipeline.save_starred_meta(meta)
 
             llm_pipeline.toggle_star_worker(client=object())
             updated = llm_pipeline.load_starred_meta()
+            self.assertTrue(mock_set_status.called)
+            self.assertEqual(mock_extract.call_args.kwargs.get("model_name"), "gpt-5.2")
 
         self.assertTrue(bool(updated.get("reference_active")))
         self.assertEqual(updated.get("reference_type"), llm_pipeline.REFERENCE_TYPE_IMG)

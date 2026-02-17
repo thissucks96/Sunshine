@@ -1,3 +1,10 @@
+## 2026-02-17 — Pin Graph-Mode Evidence Extraction To gpt-5.2
+
+- Runtime behavior change in graph-mode REF priming: `extract_graph_evidence(...)` now always uses `gpt-5.2`.
+- Scope is intentionally narrow: only graph-evidence extraction is pinned; normal REF visual summary and solve model selection still follow existing model/config behavior.
+- Purpose: maximize visual extraction reliability for graph coordinates/features while keeping main solve model routing unchanged.
+- Output contract unchanged: `WORK:` / `FINAL ANSWER:` headers, normalization, retry policy (graph retry disabled), and clipboard flow are unchanged.
+
 ## 2026-02-17 — Implement Unified REF Graph Mode Runtime
 
 - Removed legacy dedicated graph-reference runtime wiring (separate graph hotkey/store path) from active execution.
