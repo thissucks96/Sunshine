@@ -176,6 +176,8 @@
   - Full-pipeline acceptance harness:
     - light: `tests/GRAPH_CHECKER/system_acceptance_light_20260216.txt` (33/33, 100.00%)
     - dark stress: `tests/GRAPH_CHECKER/system_acceptance_dark_20260216.txt` (2/5, 40.00%)
+  - Release-candidate note:
+    - current implementation is validated for light-mode benchmark acceptance and is now queued for real-user validation on live workflows.
 - Limitation contract:
   - Dark/low-contrast graph extraction is best-effort only and may exhibit coordinate drift.
   - See `docs/LIMITATIONS.md` for explicit support boundary.

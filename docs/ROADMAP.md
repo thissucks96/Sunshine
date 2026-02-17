@@ -87,6 +87,9 @@
 - Prompt-hardening track (next): improve extractor prompt to force observation-first reading (scale-first, strict marker interpretation, explicit unknown on ambiguity) to reduce hallucinated coordinates/markers.
 - Formatting compatibility track (next): validate whether hardened prompt output needs narrow parser/normalization tolerance updates while preserving `WORK:` / `FINAL ANSWER:` and clipboard behavior.
 - Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
+- Immediate next step:
+  - Execute real-user validation on live workloads using this release-candidate build.
+  - Acceptance focus: hotkey/tray reliability, REF priming flow, solve usefulness, and stability across long user sessions.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
 - Add a critical telemetry allowlist that logs key failures even when `debug=false`.

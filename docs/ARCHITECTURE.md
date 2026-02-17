@@ -84,6 +84,10 @@ Graph runtime contract checkpoint:
 - Graph mode ON bypasses identifier and runs extraction directly at REF prime.
 - Extractor requires strict `GRAPH_EVIDENCE` schema; malformed outputs are treated as invalid and safely fall back.
 
+Release-candidate status:
+- System acceptance benchmark is complete for light-mode production scope.
+- Next validation stage is real-user/live-session testing to confirm operational reliability beyond fixture datasets.
+
 Graph extractor prompt-hardening checkpoint (planned):
 - Next step is tightening extractor instructions toward observation-first behavior to reduce coordinate/marker hallucinations.
 - Planned instruction emphasis: scale-first interpretation, strict endpoint/arrow semantics, and explicit `unclear` when evidence is blocked.

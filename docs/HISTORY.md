@@ -1,3 +1,12 @@
+## 2026-02-17 — Release Candidate Gate: Real-User Validation Next
+
+- Current build status after system acceptance:
+  - Light mode: `33/33` (`100.00%`)
+  - Dark mode stress: `2/5` (`40.00%`, experimental)
+- Decision:
+  - This version is now marked as ready for real-user testing on live problem flows.
+  - Next gate is production-like user validation (hotkey/tray solve, REF priming behavior, and output usability across real sessions).
+
 ## 2026-02-17 — Final System Acceptance Run (Full Pipeline)
 
 - Added end-to-end validation harness:
