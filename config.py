@@ -50,6 +50,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "status_notify_max_chars": 72,
     "status_notify_clear_sec": 1.1,
     "status_notify_title": "SNS",
+    "window_prompts_enabled": True,
+    "clipboard_prompts_enabled": True,
     # Status-to-clipboard mirroring is opt-in; default off to avoid clobbering solve outputs.
     "status_copy_to_clipboard": False,
 
@@ -160,6 +162,18 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     notify_enabled = bool(normalized.get("status_notify_enabled", DEFAULT_CONFIG["status_notify_enabled"]))
     if normalized.get("status_notify_enabled") != notify_enabled:
         normalized["status_notify_enabled"] = notify_enabled
+
+    window_prompts_enabled = bool(
+        normalized.get("window_prompts_enabled", DEFAULT_CONFIG["window_prompts_enabled"])
+    )
+    if normalized.get("window_prompts_enabled") != window_prompts_enabled:
+        normalized["window_prompts_enabled"] = window_prompts_enabled
+
+    clipboard_prompts_enabled = bool(
+        normalized.get("clipboard_prompts_enabled", DEFAULT_CONFIG["clipboard_prompts_enabled"])
+    )
+    if normalized.get("clipboard_prompts_enabled") != clipboard_prompts_enabled:
+        normalized["clipboard_prompts_enabled"] = clipboard_prompts_enabled
 
     status_copy_to_clipboard = bool(
         normalized.get("status_copy_to_clipboard", DEFAULT_CONFIG["status_copy_to_clipboard"])

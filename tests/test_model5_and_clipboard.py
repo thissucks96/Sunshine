@@ -199,6 +199,76 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertEqual(len(fake_icon.calls), 2)
         self.assertEqual(len(writes), 2)
 
+    def test_status_uses_clipboard_when_window_prompts_disabled(self):
+        fake_icon = _FakeNotifyIcon()
+        writes = []
+
+        def _fake_copy(text: str, max_attempts: int = 3, delay: float = 0.05) -> bool:
+            writes.append(text)
+            return True
+
+        with patch.object(utils, "_APP_ICON", fake_icon), patch.object(
+            utils, "safe_clipboard_write", side_effect=_fake_copy
+        ), patch.object(
+            utils, "set_error_active", return_value=None
+        ), patch.object(
+            utils, "log_telemetry", return_value=None
+        ), patch.object(
+            utils,
+            "get_config",
+            return_value={
+                "status_notify_enabled": True,
+                "status_notify_max_chars": 72,
+                "status_notify_clear_sec": 0.0,
+                "status_notify_title": "SNS",
+                "window_prompts_enabled": False,
+                "clipboard_prompts_enabled": True,
+            },
+        ), patch.object(
+            utils, "_LAST_STATUS_MESSAGE", ""
+        ), patch.object(
+            utils, "_LAST_STATUS_TS", 0.0
+        ):
+            utils.set_status("window prompts off")
+
+        self.assertEqual(len(fake_icon.calls), 0)
+        self.assertEqual(len(writes), 1)
+
+    def test_status_disables_clipboard_mirroring_when_clipboard_prompts_off(self):
+        fake_icon = _FakeNotifyIcon()
+        writes = []
+
+        def _fake_copy(text: str, max_attempts: int = 3, delay: float = 0.05) -> bool:
+            writes.append(text)
+            return True
+
+        with patch.object(utils, "_APP_ICON", fake_icon), patch.object(
+            utils, "safe_clipboard_write", side_effect=_fake_copy
+        ), patch.object(
+            utils, "set_error_active", return_value=None
+        ), patch.object(
+            utils, "log_telemetry", return_value=None
+        ), patch.object(
+            utils,
+            "get_config",
+            return_value={
+                "status_notify_enabled": True,
+                "status_notify_max_chars": 72,
+                "status_notify_clear_sec": 0.0,
+                "status_notify_title": "SNS",
+                "window_prompts_enabled": True,
+                "clipboard_prompts_enabled": False,
+            },
+        ), patch.object(
+            utils, "_LAST_STATUS_MESSAGE", ""
+        ), patch.object(
+            utils, "_LAST_STATUS_TS", 0.0
+        ):
+            utils.set_status("clipboard prompts off")
+
+        self.assertEqual(len(fake_icon.calls), 1)
+        self.assertEqual(len(writes), 0)
+
     def test_cancelled_between_clipboard_writes_skips_final_write(self):
         writes = []
         statuses = []

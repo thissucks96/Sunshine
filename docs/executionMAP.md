@@ -19,6 +19,7 @@
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
 - **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
 - **Status Update:** Graph handling now runs through unified REF with tray toggle `GRAPH MODE ON/OFF` (no separate graph hotkey/store path).
+- **Prompt Channel Controls:** Tray now exposes `WINDOW PROMPTS ON/OFF` and `CLIPBOARD PROMPTS ON/OFF`; activity log fanout remains always-on.
 - **Startup Reliability Check:** app startup probes both the selected solve model and `gpt-5.2` graph-extraction model; failures emit user-visible warnings.
 
 ### II. INPUT CLASSIFICATION LAYER
@@ -229,6 +230,20 @@
   1. `llm_pipeline.py:1499`: Write Full Output
   2. `llm_pipeline.py:1505`: Wait `clipboard_history_settle_sec`
   3. `llm_pipeline.py:1510`: Write Final Answer Only
+
+### X.1 STATUS/ERROR FANOUT CHANNELS
+
+- **Always-On Sink:**
+  - `utils.py:128`: `log_activity(...)` writes to `app_activity.log` regardless of prompt-channel toggles.
+- **Window Prompt Gate:**
+  - `utils.py:244`: `show_notification(...)` respects config `window_prompts_enabled`.
+  - `utils.py:281`: `show_message_box_notification(...)` respects config `window_prompts_enabled`.
+- **Clipboard Prompt Gate:**
+  - `utils.py:143`: `mirror_notification_to_clipboard(...)` respects config `clipboard_prompts_enabled`.
+- **Tray Control Wiring:**
+  - `main.py`: `_on_tray_window_prompts_toggle(...)`
+  - `main.py`: `_on_tray_clipboard_prompts_toggle(...)`
+  - `main.py`: menu entries added in `_build_tray_menu(...)`.
 
 ### XI. STARRED REFERENCE SYSTEM
 

@@ -645,6 +645,47 @@ def _on_tray_graph_mode_toggle(_icon, _item):
             _refresh_tray_menu(_TRAY_ICON)
 
 
+def _on_tray_window_prompts_toggle(_icon, _item):
+    try:
+        cfg = get_config()
+        current = bool(cfg.get("window_prompts_enabled", True))
+        updated = _persist_config_changes({"window_prompts_enabled": (not current)}, source="tray_window_prompts_toggle")
+        if updated is None:
+            set_status("WINDOW PROMPTS toggle failed: unable to persist config")
+            return
+        enabled = bool(updated.get("window_prompts_enabled", True))
+        log_telemetry("window_prompts_toggled", {"enabled": enabled})
+        set_status("WINDOW PROMPTS ON" if enabled else "WINDOW PROMPTS OFF")
+    except Exception as e:
+        log_telemetry("window_prompts_toggle_error", {"error": str(e)})
+        set_status(f"WINDOW PROMPTS toggle failed: {e}")
+    finally:
+        if _TRAY_ICON is not None:
+            _refresh_tray_menu(_TRAY_ICON)
+
+
+def _on_tray_clipboard_prompts_toggle(_icon, _item):
+    try:
+        cfg = get_config()
+        current = bool(cfg.get("clipboard_prompts_enabled", True))
+        updated = _persist_config_changes(
+            {"clipboard_prompts_enabled": (not current)},
+            source="tray_clipboard_prompts_toggle",
+        )
+        if updated is None:
+            set_status("CLIPBOARD PROMPTS toggle failed: unable to persist config")
+            return
+        enabled = bool(updated.get("clipboard_prompts_enabled", True))
+        log_telemetry("clipboard_prompts_toggled", {"enabled": enabled})
+        set_status("CLIPBOARD PROMPTS ON" if enabled else "CLIPBOARD PROMPTS OFF")
+    except Exception as e:
+        log_telemetry("clipboard_prompts_toggle_error", {"error": str(e)})
+        set_status(f"CLIPBOARD PROMPTS toggle failed: {e}")
+    finally:
+        if _TRAY_ICON is not None:
+            _refresh_tray_menu(_TRAY_ICON)
+
+
 def _on_tray_select_model(icon, _item, model_name: str):
     _set_model_from_ui(icon, model_name, source="tray")
 
@@ -681,6 +722,22 @@ def _is_graph_mode_enabled() -> bool:
         return False
 
 
+def _is_window_prompts_enabled() -> bool:
+    try:
+        return bool(get_config().get("window_prompts_enabled", True))
+    except Exception as e:
+        log_telemetry("window_prompts_state_read_error", {"error": str(e)})
+        return True
+
+
+def _is_clipboard_prompts_enabled() -> bool:
+    try:
+        return bool(get_config().get("clipboard_prompts_enabled", True))
+    except Exception as e:
+        log_telemetry("clipboard_prompts_state_read_error", {"error": str(e)})
+        return True
+
+
 def _make_model_select_action(model_name: str):
     def _action(icon, menu_item):
         _on_tray_select_model(icon, menu_item, model_name)
@@ -693,8 +750,12 @@ def _build_tray_menu():
     models = _normalize_available_models(cfg)
     ref_active = _is_ref_active_session()
     graph_mode = _is_graph_mode_enabled()
+    window_prompts_enabled = _is_window_prompts_enabled()
+    clipboard_prompts_enabled = _is_clipboard_prompts_enabled()
     ref_label = "REF ON" if ref_active else "REF OFF"
     graph_mode_label = "GRAPH MODE ON" if graph_mode else "GRAPH MODE OFF"
+    window_prompts_label = "WINDOW PROMPTS ON" if window_prompts_enabled else "WINDOW PROMPTS OFF"
+    clipboard_prompts_label = "CLIPBOARD PROMPTS ON" if clipboard_prompts_enabled else "CLIPBOARD PROMPTS OFF"
 
     model_items = [item("AUTO", _on_tray_auto_model_placeholder)]
     model_items.extend([
@@ -712,6 +773,8 @@ def _build_tray_menu():
         item("Solve Now", _on_tray_solve_now),
         item(ref_label, _on_tray_star_toggle, default=True),
         item(graph_mode_label, _on_tray_graph_mode_toggle),
+        item(window_prompts_label, _on_tray_window_prompts_toggle),
+        item(clipboard_prompts_label, _on_tray_clipboard_prompts_toggle),
         item("Model", pystray.Menu(*model_items)),
         # No Quit menu item: close is handled by right-click tray policy.
     )

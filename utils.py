@@ -141,6 +141,9 @@ def log_activity(message: str, level: str = "INFO", source: str = "unknown") -> 
 
 
 def mirror_notification_to_clipboard(message: str, level: str, source: str) -> bool:
+    cfg = get_config()
+    if not bool(cfg.get("clipboard_prompts_enabled", True)):
+        return False
     payload = _build_notification_clipboard_payload(message=message, level=level, source=source)
     ok = safe_clipboard_write(payload)
     if not ok:
@@ -238,6 +241,8 @@ def show_notification(
 ) -> bool:
     global _APP_ICON
     cfg = get_config()
+    if not bool(cfg.get("window_prompts_enabled", True)):
+        return False
     if not force and not bool(cfg.get("status_notify_enabled", True)):
         return False
     shown = False
@@ -277,6 +282,9 @@ def show_message_box_notification(
     text = str(message or "")
     caption = str(title or "SunnyNotSummer")
     log_activity(text, level=level, source=source)
+    cfg = get_config()
+    if not bool(cfg.get("window_prompts_enabled", True)):
+        return mirror_notification_to_clipboard(text, level=level, source=source)
     try:
         ctypes.windll.user32.MessageBoxW(0, text, caption, int(flags))
     except Exception as e:

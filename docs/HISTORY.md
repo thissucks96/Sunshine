@@ -1,3 +1,19 @@
+## 2026-02-17 — Tray Prompt Channel Toggles (Window/Clipboard) With Permanent Activity Log
+
+- Runtime behavior update:
+  - Added tray toggles for:
+    - `WINDOW PROMPTS ON/OFF`
+    - `CLIPBOARD PROMPTS ON/OFF`
+  - Both toggles persist in `config.json` via:
+    - `window_prompts_enabled`
+    - `clipboard_prompts_enabled`
+- Fanout behavior:
+  - `app_activity.log` remains always-on (unchanged).
+  - Window notifications/message boxes now respect `window_prompts_enabled`.
+  - Clipboard prompt mirroring now respects `clipboard_prompts_enabled`.
+- Scope safety:
+  - Solve pipeline, output normalization, `WORK:`/`FINAL ANSWER:` headers, and graph retry status are unchanged.
+
 ## 2026-02-17 — Phase 2 Intent: Synthetic Graph Generation + Golden Dataset (Docs Only)
 
 - Direction update for next module (staging, no runtime solve-path code changes yet):
