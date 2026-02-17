@@ -91,6 +91,16 @@
 - Expand graph retry triggers beyond current phrase matching.
 - Add dual OCR path and reconciliation for sign/symbol-sensitive math text.
 
+### Phase 2 Completion Checkpoint — Graph Extraction Schema & Robustness (Complete)
+- Sprint status: **Complete**.
+- Delivered:
+  - Schema usefulness fields (`INTERCEPTS`, `KEY_POINTS`, stronger `ASYMPTOTES` behavior).
+  - Parser robustness against unknown uppercase fields while preserving required-field validation.
+  - Prompt hardening and tiered benchmark instrumentation.
+- Strategic pivot applied:
+  - Dark/low-contrast hard-tier tuning is intentionally halted to avoid overfitting and preserve standard-case precision.
+  - Dark-mode remains best-effort per `docs/LIMITATIONS.md`.
+
 ## Phase 3 (Later)
 - Expand routing policy with confidence-based escalation.
 - Add targeted regression sets for graph domain/range edge cases.

@@ -165,6 +165,9 @@
   - Tiered benchmark after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (Easy 100.00%, Medium 87.50%, Hard 60.00%).
   - Hard-tier-only run after conditional dark-mode recovery: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_210654.json` (Hard 70.00%).
   - Hard-tier rerun after integer snapping/grid-bias patch: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_211155.json` (Hard 70.00%; dark-mode `(2)/(3)/(5)` drift remains).
+- Limitation contract:
+  - Dark/low-contrast graph extraction is best-effort only and may exhibit coordinate drift.
+  - See `docs/LIMITATIONS.md` for explicit support boundary.
 
 ### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
 

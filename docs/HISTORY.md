@@ -1,3 +1,14 @@
+## 2026-02-17 — Strategic Pivot: Freeze Dark-Mode Tuning, Finalize Schema/Robustness Sprint
+
+- Product decision:
+  - Halt further dark-mode optimization work after stress validation pass.
+  - Accept hard-tier dark-mode accuracy as resilience signal, not production gating criterion.
+- Finalization:
+  - Keep schema usefulness and parser robustness gains as production path.
+  - Mark "Graph Extraction Schema & Robustness" sprint complete.
+- Documentation:
+  - Added `docs/LIMITATIONS.md` with best-effort dark/low-contrast support statement and expected coordinate drift note.
+
 ## 2026-02-17 — Integer Snapping + Grid-Bias Prompt For Dark-Mode Recovery
 
 - Runtime update in `llm_pipeline.py`:
