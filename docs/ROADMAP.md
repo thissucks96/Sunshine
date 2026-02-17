@@ -69,6 +69,10 @@
 - Prioritize graph/vision correctness per `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Phase 2 (Near-Term)
+- Implement unified REF graph mode (`graph_mode` ON/OFF) in the existing REF pipeline.
+- Add "armed next REF" behavior so enabling graph mode with no active REF marks the next REF capture as graph context.
+- Extract and cache graph evidence at REF-prime time for reuse during subsequent graph-like solve requests.
+- Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
 - Add a critical telemetry allowlist that logs key failures even when `debug=false`.

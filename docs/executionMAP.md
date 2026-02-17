@@ -3,7 +3,7 @@
 > **CANONICAL REFERENCE**
 > This document is the forensic source of truth for SunnyNotSummer execution flows.
 > Any runtime code change MUST be reflected here immediately.
-> **Last Verified:** 2026-02-16
+> **Last Verified:** 2026-02-17
 
 ---
 
@@ -18,7 +18,7 @@
   - `main.py:550` / `586` (Hotkey registration/trigger)
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
 - **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
-- **Graph REF Toggle:** Dedicated graph-reference toggle is available via tray/hotkey and dispatches to `toggle_graph_reference_worker(...)`.
+- **Direction Update:** Graph handling is moving to a unified REF pipeline with a `graph_mode` toggle (`ON/OFF`).
 
 ### II. INPUT CLASSIFICATION LAYER
 
@@ -113,14 +113,14 @@
 
 **A. Activation**
 - `main.py:502`: `toggle_star_worker`
-- `main.py`: `toggle_graph_reference_worker` (graph-only image reference)
+- Direction target: graph mode uses the same REF toggle flow and arms the next REF capture as graph context when enabled.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
-- Graph slot fields in metadata: `graph_reference_active`, `graph_image_path`, `graph_reference_summary`
+- Direction target metadata: `graph_mode_enabled` and graph-evidence cache fields captured at REF-prime time.
 **C. Injection**
 - `llm_pipeline.py:1251`: Meta loaded per solve.
 - `llm_pipeline.py:1348`: Injected into payload if active.
-- Graph-like solves can prefer graph reference image as secondary context while preserving standard REF for non-graph prompts.
+- Direction target: graph-mode evidence is added as secondary context for graph-like solves while non-graph solves keep standard REF behavior.
 **D. Edge Cases**
 - Startup clears reference (`main.py:751`).
 - Model switch preserves reference.

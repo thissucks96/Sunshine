@@ -38,6 +38,11 @@
 
 ---
 
+Direction Update (Planned):
+- Graph support is moving to a unified REF pipeline with a `graph_mode` toggle, instead of a separate graph-reference hotkey/store.
+- When graph mode is enabled with no active REF, the next REF capture is treated as graph context and graph-evidence extraction is performed at REF-prime time.
+- Solve requests will reuse cached graph evidence for graph-like prompts while preserving existing output and clipboard contracts.
+
 1 Executive Overview
 SunnyNotSummer is a Windows tray-first clipboard solver that captures text or image input from the clipboard, optionally applies a STAR/REF reference context, sends a constrained prompt to the OpenAI Responses API, post-processes the model output into a deterministic math format, writes results back to clipboard (full result then final answer), and surfaces state through tray icon color, tray notifications, and telemetry. The core runtime is orchestrated in `main.py:733` (`main`), solve/reference logic lives in `llm_pipeline.py:846` (`solve_pipeline`) and `llm_pipeline.py:1074` (`toggle_star_worker`), configuration/state persistence is in `config.py`, and cross-cutting UI/clipboard/telemetry helpers are in `utils.py`.
 

@@ -1,9 +1,9 @@
-## 2026-02-17 — Add Dedicated Graph-Only Reference Slot
+## 2026-02-17 — Direction Update: Unified REF Graph Mode
 
-- Runtime behavior change: added a separate graph reference slot (`graph_reference_active`, `graph_image_path`, `graph_reference_summary`) in STAR metadata.
-- New graph-reference toggle path added (hotkey/tray) to set or clear an image-only GRAPH REF independently of the existing REF.
-- Solve routing now prefers GRAPH REF for graph-like inputs (image input or graph/domain-range cues) and keeps existing REF routing for non-graph inputs.
-- Output headers (`WORK:` / `FINAL ANSWER:`), normalization pipeline, retry loop, and clipboard write flow remain unchanged.
+- Product direction update: adopt a single REF pipeline plus a `graph_mode` toggle (`ON/OFF`).
+- New intended behavior: when `graph_mode` is enabled and no REF is active, the app arms the next REF capture as graph context and runs graph-evidence extraction at REF-prime time.
+- Solve behavior target: graph-mode evidence is reused as supporting context while normal solve flow, output headers (`WORK:` / `FINAL ANSWER:`), normalization, retry policy, and clipboard flow stay stable.
+- This update records direction and implementation intent; the next runtime commit is expected to apply the unified graph-mode wiring.
 
 ## 2026-02-16 — Document External AHK Hotkey Conflict With Solve Trigger
 

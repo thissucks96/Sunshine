@@ -17,3 +17,18 @@ If future questions depend on vertex accuracy, hallucinated summary could propag
 
 Status:
 Resolved — False alarm for correctness; documented for architectural context.
+
+## 2026-02-17 — Unified REF Graph Mode Direction
+
+Description:
+Direction shifted to a single REF pipeline with a `graph_mode` toggle.
+
+Planned Behavior:
+- If graph mode is ON and REF is not active, next REF capture is armed as graph context.
+- REF-prime step runs graph evidence extraction and caches structured evidence.
+- Graph-like solves reuse cached graph evidence as secondary context.
+
+Constraints:
+- Keep `WORK:` / `FINAL ANSWER:` headers unchanged.
+- Keep output normalization and clipboard write flow unchanged.
+- Keep graph retry disabled.
