@@ -18,3 +18,6 @@
 
 - Hard-tier dark-mode datasets are treated as resilience/stress validation, not primary production acceptance gates.
 - Primary production quality targets are anchored to standard Easy/Medium graph inputs and parser-contract stability.
+- Current fixture limitation:
+  - existing static datasets can miss long-tail graph variants.
+  - planned mitigation is synthetic golden-dataset generation with known equation/domain-range keys and controlled artifact injection.

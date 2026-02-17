@@ -76,6 +76,10 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
    - WORK-vs-FINAL interval consistency checks
    - expanded graph retry triggers
    - dual OCR reconciliation path
+6. Add synthetic graph generation + golden-dataset validation pipeline:
+   - generate images from known equation/domain-range seeds
+   - persist deterministic ground-truth keys per sample
+   - inject controlled visual artifacts for stress coverage
 
 ## Notes
 - This file remains an audit snapshot, not an operating contract.

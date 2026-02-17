@@ -30,6 +30,7 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - Feature flags default: OFF
 - Output contract stability preserved (`WORK:` / `FINAL ANSWER:` unchanged)
 - Current docs-tracked next step: harden graph extractor prompt and run formatting-compat checks before any output-template changes.
+- Current staging intent: build synthetic graph generation + golden dataset pipeline for long-term regression testing.
 
 ## Branching Strategy
 - Active stabilization branch: `feature/forced-visual-extraction`

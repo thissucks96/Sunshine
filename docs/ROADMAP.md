@@ -90,6 +90,10 @@
 - Immediate next step:
   - Execute real-user validation on live workloads using this release-candidate build.
   - Acceptance focus: hotkey/tray reliability, REF priming flow, solve usefulness, and stability across long user sessions.
+- Phase 2 parallel track (staging design):
+  - Implement synthetic graph generation pipeline (`tests/generate_synthetic_graphs.py`) to create scalable golden datasets.
+  - Source labels from equation + domain/range parameters at generation time (no manual post-labeling).
+  - Include intentional visual degradations to stress-test classifier/extractor robustness and prevent regression drift.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
 - Add a critical telemetry allowlist that logs key failures even when `debug=false`.

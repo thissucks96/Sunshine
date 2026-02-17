@@ -23,6 +23,16 @@
   - explicit `unclear` for ambiguous or clipped evidence
 - Follow-on validation will check parser/normalization tolerance needs without changing `WORK:` / `FINAL ANSWER:` or clipboard contract.
 
+0.3 Synthetic Golden Dataset Track (Planned)
+- Next QA module: `tests/generate_synthetic_graphs.py`.
+- Data contract:
+  - generate graph images from equation + domain/range seeds.
+  - emit ground-truth labels from generation parameters for intercepts/asymptotes/key points/domain/range.
+- Stress profile:
+  - style-match production visuals and inject degradations (jitter, blur, compression, contrast variance).
+- Goal:
+  - scale beyond fixed fixture sets and detect regression on broader graph distributions without manual labeling.
+
 1 Vision Data Flow
 1. Image capture starts in `main.py:444` (`def worker`). The worker reads clipboard via `safe_clipboard_read()`.
    Anchor: `main.py:463`, search token `raw_clip, _ = safe_clipboard_read()`.

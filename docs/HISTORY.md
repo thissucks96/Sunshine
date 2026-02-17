@@ -1,3 +1,13 @@
+## 2026-02-17 — Phase 2 Intent: Synthetic Graph Generation + Golden Dataset (Docs Only)
+
+- Direction update for next module (staging, no runtime solve-path code changes yet):
+  - build `tests/generate_synthetic_graphs.py` to generate synthetic graph images from equation + domain/range seeds.
+  - emit per-sample ground truth keys at generation time (equation family, parameters, asymptotes/intercepts/key points/domain/range).
+  - apply style matching (red curve, dashed brown guides, gray grid, labeled axes) plus intentional degradations (jitter/blur/compression/contrast) for stress coverage.
+- Purpose:
+  - create a reproducible "golden dataset" pipeline for long-term regression safety beyond current fixed fixtures.
+  - remove manual-label bottlenecks by deriving labels directly from generation parameters.
+
 ## 2026-02-17 — Release Candidate Gate: Real-User Validation Next
 
 - Current build status after system acceptance:

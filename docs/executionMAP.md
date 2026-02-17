@@ -193,6 +193,19 @@
   - if prompt wording changes introduce equivalent but varied field-value phrasing, update parser/format tolerance narrowly
   - do not alter `WORK:` / `FINAL ANSWER:` headers, solve loop contract, or clipboard write flow
 
+### VII.3 Synthetic Golden Dataset Pipeline (Planned, Non-Runtime)
+
+- Planned test harness module: `tests/generate_synthetic_graphs.py`.
+- Generation contract:
+  - create graph images from known equation families and domain/range constraints.
+  - write ground-truth metadata at generation time (equation parameters + expected evidence fields).
+- Rendering profile:
+  - match production-like style (red curve, dashed brown guides, gray grid, labeled axes).
+  - add controlled degradations (jitter, blur, jpeg compression artifacts, contrast shifts).
+- Usage:
+  - feed generated images into detector/extractor validation to measure regression over expanding distributions.
+  - keep this pipeline outside runtime solve path; it is a validation/QA layer only.
+
 ### VIII. RETRY SYSTEM
 
 **A. Base Retry Loop**

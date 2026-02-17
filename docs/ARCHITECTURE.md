@@ -87,6 +87,8 @@ Graph runtime contract checkpoint:
 Release-candidate status:
 - System acceptance benchmark is complete for light-mode production scope.
 - Next validation stage is real-user/live-session testing to confirm operational reliability beyond fixture datasets.
+- Phase 2 test-infrastructure intent:
+  - introduce synthetic graph generation + golden-dataset validation in `tests/` to expand coverage with deterministic labels sourced from equation/domain-range seeds.
 
 Graph extractor prompt-hardening checkpoint (planned):
 - Next step is tightening extractor instructions toward observation-first behavior to reduce coordinate/marker hallucinations.

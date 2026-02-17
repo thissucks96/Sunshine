@@ -1,3 +1,19 @@
+## 2026-02-17 — Synthetic Golden Dataset Planning (Next Module)
+
+Description:
+Phase 2 planning is focused on synthetic graph generation for scalable regression coverage.
+
+Planned Deliverable:
+- `tests/generate_synthetic_graphs.py`
+
+Generation Contract:
+- Build graph images from equation + domain/range parameter sets.
+- Persist per-image ground-truth keys at generation time (no manual labels).
+- Apply visual realism + artifact injection for stress testing.
+
+Status:
+Planning documented; runtime solve behavior unchanged.
+
 ## 2026-02-17 — Prompt-Hardening Investigation (Graph Extractor)
 
 Description:

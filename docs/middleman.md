@@ -27,8 +27,8 @@ Then wait for explicit user approval before producing the final Codex instructio
 
 ## Next Feature Target
 
-* Graph-mode evidence quality improvements through extractor prompt hardening
-* Objective: reduce coordinate/marker hallucinations and verify parser/formatting compatibility while preserving solve/output contract stability
+* Synthetic graph generation + golden dataset pipeline (`tests/generate_synthetic_graphs.py`)
+* Objective: generate reproducible equation/domain-range keyed samples (with artifact injection) to scale regression coverage and guard against extraction drift
 
 ## Constraints
 
