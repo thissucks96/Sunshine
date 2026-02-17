@@ -1,3 +1,21 @@
+## 2026-02-17 — Graph Extractor A/B Result: gpt-5.2 Decisive Winner
+
+- Ran extraction-only comparison on `tests/GRAPH_CHECKER/graph_only` (38 graph images) with:
+  - `gpt-5.2`
+  - `gpt-5-mini`
+  - `gpt-4o`
+- Run artifact: `tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`.
+- Result summary:
+  - `gpt-5.2`: 38/38 valid graph-evidence outputs
+  - `gpt-5-mini`: 2/38 valid, 36/38 `INVALID_GRAPH`
+  - `gpt-4o`: 38/38 valid format, but only 8/38 exact structural matches vs `gpt-5.2` baseline
+- Interpretation:
+  - `gpt-5.2` is the decisive winner for graph extraction reliability.
+  - `gpt-4o` remains structurally drift-prone for endpoints/markers/feature fields even when format-valid.
+- Direction:
+  - Keep graph runtime pinned to `gpt-5.2`.
+  - Next validation phase will focus on deeper 5.2-only extraction quality checks.
+
 ## 2026-02-17 — Pin All Graph Runtime Calls To gpt-5.2 (Remove Selector Ghost Code)
 
 - Runtime behavior change: graph presence detection (`detect_graph_presence`) is now pinned to `gpt-5.2` (same as graph evidence extraction).

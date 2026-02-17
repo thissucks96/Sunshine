@@ -78,6 +78,7 @@
 - Current implementation status: REF-prime graph identifier function exists behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default OFF) with binary YES/NO routing.
 - Scout classifier status: REF-prime detection uses binary YES/NO with `gpt-5.2`; validation uses `tests/verify_classifier.py` and `tests/GRAPH_CHECKER/`.
 - Latest benchmark status: sequential ground-truth run (single-thread, no exclusions) on 103 images completed at 103/103 correct (100.00%).
+- Extractor comparison status (`graph_only`, 38 images): `gpt-5.2` is the decisive winner vs `gpt-5-mini` and `gpt-4o`; next test phase is 5.2-only extraction quality scoring.
 - Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.

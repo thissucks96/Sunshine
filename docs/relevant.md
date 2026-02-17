@@ -1,3 +1,22 @@
+## 2026-02-17 — Graph Extractor Model Comparison Outcome
+
+Description:
+Completed extraction-only model comparison on graph-only corpus to choose production graph extractor model.
+
+Run:
+- Dataset: `tests/GRAPH_CHECKER/graph_only/` (38 graph images)
+- Log: `tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`
+- Models compared: `gpt-5.2`, `gpt-5-mini`, `gpt-4o`
+
+Outcome:
+- `gpt-5.2`: 38/38 valid extraction outputs
+- `gpt-5-mini`: 2/38 valid, 36/38 `INVALID_GRAPH`
+- `gpt-4o`: format-valid on 38/38 but only 8/38 exact structural matches vs `gpt-5.2` baseline
+
+Decision:
+- Treat `gpt-5.2` as the decisive winner for graph extraction.
+- Continue with 5.2-only deep quality testing for endpoint/marker/scale fidelity.
+
 ## 2026-02-17 — Graph Runtime Model Contract Simplified
 
 Description:

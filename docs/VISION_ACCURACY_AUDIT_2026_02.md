@@ -5,6 +5,16 @@
 - Run artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`.
 - Positive-only subset for targeted runs: `tests/GRAPH_CHECKER/graph_only/` (38 graph images).
 
+0.1 Graph Extractor Model Comparison Checkpoint (2026-02-17)
+- Extraction-only comparison completed on `tests/GRAPH_CHECKER/graph_only/` (38 images).
+- Models tested: `gpt-5.2`, `gpt-5-mini`, `gpt-4o`.
+- Result:
+  - `gpt-5.2`: 38/38 valid extraction outputs
+  - `gpt-5-mini`: 2/38 valid, 36/38 `INVALID_GRAPH`
+  - `gpt-4o`: format-valid but structurally drifted from `gpt-5.2` baseline
+- Run artifact: `tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`.
+- Decision: keep graph extraction runtime pinned to `gpt-5.2`.
+
 1 Vision Data Flow
 1. Image capture starts in `main.py:444` (`def worker`). The worker reads clipboard via `safe_clipboard_read()`.
    Anchor: `main.py:463`, search token `raw_clip, _ = safe_clipboard_read()`.

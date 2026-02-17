@@ -93,6 +93,7 @@
 - `YES` routes to graph-evidence extraction; `NO` falls back to normal REF classification.
 - Validation harness: `tests/verify_classifier.py` supports sequential ground-truth mode (`max_workers=1`) with 429 exponential backoff and no exclusion scoring.
 - Latest benchmark: `tests/GRAPH_CHECKER` full set achieved 103/103 (100.00%) in sequential no-exclusion mode; positive-only subset is maintained at `tests/GRAPH_CHECKER/graph_only/` (38 images).
+- Extraction A/B benchmark (`tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`): `gpt-5.2` is the production winner; `gpt-5-mini` under-detected graphs and `gpt-4o` showed structural drift against 5.2 evidence.
 
 ### VIII. RETRY SYSTEM
 
