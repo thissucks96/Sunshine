@@ -4,6 +4,27 @@
 
 SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, solves math with OpenAI Responses API, and writes deterministic results back to clipboard.
 
+## How To Use The App
+1. Launch the app with `python main.py`.
+2. Copy a problem to clipboard (text or image/screenshot).
+3. Press `ctrl+shift+x` to solve (or use tray `Solve Now`).
+4. Read status updates from tray notifications.
+5. Paste result where needed:
+   - the app writes full solve output first
+   - then writes parsed final answer to clipboard
+
+Optional context flow:
+1. Copy reference content (text/image) to clipboard.
+2. Press `ctrl+shift+s` to prime REF.
+3. For graph-heavy sessions, enable tray `GRAPH MODE ON/OFF` before priming an image REF.
+4. Press `ctrl+shift+s` again to clear REF when done.
+
+Core controls:
+- Solve: `ctrl+shift+x`
+- REF toggle: `ctrl+shift+s`
+- Cycle model: `ctrl+shift+m`
+- Quit: `ctrl+shift+q`
+
 ## Current Stable Anchor
 - Branch: `feature/forced-visual-extraction`
 - Stable Tag: `exam-ready-v1`
