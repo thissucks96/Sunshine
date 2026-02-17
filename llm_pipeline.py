@@ -5,11 +5,12 @@ import base64
 import re
 import time
 import uuid
+import statistics
 from fractions import Fraction
 from typing import Any, Dict, List, Optional, Union
 
 import pyperclip
-from PIL import Image
+from PIL import Image, ImageStat
 from openai import OpenAI
 
 from config import get_config, MODEL, app_home_dir
@@ -158,6 +159,28 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
 
 # Graph evidence extraction is intentionally pinned to the strongest visual model.
 GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
+
+DARK_MODE_GRAPH_FORENSIC_APPEND = (
+    "Dark-mode forensic override:\n"
+    "- Mentally invert low-contrast visuals: treat bright curve/axis traces as primary signal.\n"
+    "- Anchor mapping: locate origin (0,0) first, calibrate axis labels, then count grid units to query x/y targets.\n"
+    "- Noise filtering: ignore faint background artifacts and decorative overlays.\n"
+)
+
+DARK_MODE_KEYPOINT_CANDIDATES_PROMPT = (
+    "You are extracting one primary KEY_POINT from a dark/low-contrast coordinate graph.\n"
+    "Use forensic reading only:\n"
+    "- Mentally invert low-contrast visuals.\n"
+    "- Locate origin and calibrate scale from visible labels before reading coordinates.\n"
+    "- Ignore faint background artifacts and overlays.\n"
+    "If a query anchor is visible (for example f(2), g(-2), h(x)=13), prioritize that key point.\n"
+    "Return exactly one line and nothing else in this format:\n"
+    "KEY_POINT_CANDIDATES: (x=<num>, y=<num>); (x=<num>, y=<num>); (x=<num>, y=<num>)\n"
+    "If no usable key point is visible, return exactly:\n"
+    "KEY_POINT_CANDIDATES: none"
+)
+
+DARK_MODE_FILENAME_CUES = ("dark mode", "dark_mode", "darkmode")
 
 GRAPH_IDENTIFIER_PROMPT = (
     "Your sole task is to determine whether a coordinate axes graph is present.\n"
@@ -432,6 +455,166 @@ def set_graph_mode(enabled: bool) -> bool:
     return bool(meta.get("graph_mode", False))
 
 
+def _is_dark_mode_image(image_path: str, img: Image.Image) -> bool:
+    name = str(os.path.basename(str(image_path or ""))).lower()
+    if any(cue in name for cue in DARK_MODE_FILENAME_CUES):
+        return True
+    try:
+        gray = img.convert("L")
+        hist = gray.histogram()
+        total = float(sum(hist) or 1.0)
+        dark_ratio = float(sum(hist[:80])) / total
+        bright_ratio = float(sum(hist[180:])) / total
+        mean_luma = float(ImageStat.Stat(gray).mean[0])
+        return mean_luma <= 110.0 and dark_ratio >= 0.40 and bright_ratio >= 0.01
+    except Exception:
+        return False
+
+
+def _parse_candidate_xy_pairs(text: str) -> List[Dict[str, float]]:
+    out: List[Dict[str, float]] = []
+    raw = str(text or "")
+    m_line = re.search(r"(?im)^\s*KEY_POINT_CANDIDATES\s*:\s*(.+?)\s*$", raw)
+    if not m_line:
+        return out
+    body = m_line.group(1).strip()
+    if body.lower() in ("none", "n/a", "na"):
+        return out
+    for m in re.finditer(
+        r"\(\s*x\s*=\s*(-?\d+(?:\.\d+)?)\s*,\s*y\s*=\s*(-?\d+(?:\.\d+)?)\s*\)",
+        body,
+        flags=re.IGNORECASE,
+    ):
+        try:
+            out.append({"x": float(m.group(1)), "y": float(m.group(2))})
+        except Exception:
+            continue
+    return out
+
+
+def _rerank_candidate_axis(values: List[float]) -> Optional[float]:
+    if not values:
+        return None
+    integer_votes: Dict[int, int] = {}
+    for v in values:
+        iv = int(round(v))
+        if abs(v - iv) <= 0.25:
+            integer_votes[iv] = integer_votes.get(iv, 0) + 1
+    if integer_votes:
+        winner, count = sorted(integer_votes.items(), key=lambda x: (-x[1], abs(x[0])))[0]
+        if count >= 2:
+            return float(winner)
+    return float(statistics.median(values))
+
+
+def _rerank_dark_mode_key_point(candidates: List[Dict[str, float]]) -> Optional[Dict[str, float]]:
+    if len(candidates) < 2:
+        return None
+    xs = [float(c.get("x")) for c in candidates if "x" in c]
+    ys = [float(c.get("y")) for c in candidates if "y" in c]
+    x_final = _rerank_candidate_axis(xs)
+    y_final = _rerank_candidate_axis(ys)
+    if x_final is None or y_final is None:
+        return None
+    return {"x": x_final, "y": y_final}
+
+
+def _format_coord_value(v: float) -> str:
+    if abs(v - round(v)) < 1e-9:
+        return str(int(round(v)))
+    return f"{float(v):.2f}".rstrip("0").rstrip(".")
+
+
+def _parse_key_point_token(token: str) -> Optional[Dict[str, float]]:
+    t = str(token or "")
+    m = re.search(
+        r"\(\s*x\s*=\s*(-?\d+(?:\.\d+)?)\s*,\s*y\s*=\s*(-?\d+(?:\.\d+)?)\s*\)",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        return None
+    try:
+        return {"x": float(m.group(1)), "y": float(m.group(2))}
+    except Exception:
+        return None
+
+
+def _should_apply_dark_mode_recovery(existing_key_points: List[str]) -> bool:
+    if not existing_key_points:
+        return True
+    first = _parse_key_point_token(existing_key_points[0])
+    if first is None:
+        return True
+    return abs(first["y"] - round(first["y"])) > 0.20
+
+
+def _upsert_graph_evidence_field_line(text: str, field_key: str, value: str) -> str:
+    source = str(text or "")
+    key = str(field_key or "").strip().upper()
+    if not source or not key:
+        return source
+    lines = source.splitlines()
+    header_idx = -1
+    for i, line in enumerate(lines):
+        if re.match(r"(?i)^\s*GRAPH_EVIDENCE\s*:\s*$", line):
+            header_idx = i
+            break
+    if header_idx == -1:
+        return source
+
+    field_pattern = re.compile(rf"^\s*{re.escape(key)}\s*:\s*.+$", flags=re.IGNORECASE)
+    scale_pattern = re.compile(r"^\s*SCALE\s*:\s*.+$", flags=re.IGNORECASE)
+    insert_idx = None
+    for i in range(header_idx + 1, len(lines)):
+        stripped = lines[i].strip()
+        if re.search(r"(?i)\b(WORK|FINAL ANSWER|\[FINAL\])\b", stripped):
+            break
+        if field_pattern.match(lines[i]):
+            lines[i] = f"  {key}: {value}"
+            return "\n".join(lines)
+        if insert_idx is None and scale_pattern.match(lines[i]):
+            insert_idx = i
+
+    if insert_idx is None:
+        insert_idx = header_idx + 1
+    lines.insert(insert_idx, f"  {key}: {value}")
+    return "\n".join(lines)
+
+
+def _recover_dark_mode_key_point(
+    client: OpenAI,
+    model_name: str,
+    graph_b64: str,
+    timeout: int,
+    existing_key_points: List[str],
+) -> Optional[Dict[str, float]]:
+    if not _should_apply_dark_mode_recovery(existing_key_points):
+        return None
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": DARK_MODE_KEYPOINT_CANDIDATES_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{graph_b64}"}]},
+    ]
+    try:
+        raw = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=max(8, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=180,
+            flow_name="graph_dark_mode_keypoint_candidates",
+        ).strip()
+    except Exception as e:
+        log_telemetry("graph_evidence_dark_mode_recovery_error", {"stage": "api", "error": str(e)})
+        return None
+
+    candidates = _parse_candidate_xy_pairs(raw)
+    if not candidates:
+        return None
+    return _rerank_dark_mode_key_point(candidates)
+
+
 def extract_graph_evidence(
     image_path: str,
     client: OpenAI,
@@ -446,8 +629,13 @@ def extract_graph_evidence(
         log_telemetry("graph_evidence_extract_error", {"stage": "image_load", "error": str(e)})
         return "INVALID_GRAPH"
 
+    is_dark_mode = _is_dark_mode_image(image_path, graph_img)
+    extraction_prompt = GRAPH_EVIDENCE_EXTRACTION_PROMPT
+    if is_dark_mode:
+        extraction_prompt = extraction_prompt + "\n" + DARK_MODE_GRAPH_FORENSIC_APPEND
+
     payload = [
-        {"role": "system", "content": [{"type": "input_text", "text": GRAPH_EVIDENCE_EXTRACTION_PROMPT}]},
+        {"role": "system", "content": [{"type": "input_text", "text": extraction_prompt}]},
         {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{graph_b64}"}]},
     ]
     try:
@@ -468,9 +656,32 @@ def extract_graph_evidence(
         return "INVALID_GRAPH"
     if extracted.upper().startswith("INVALID_GRAPH"):
         return "INVALID_GRAPH"
-    if _extract_graph_evidence_block(extracted) is None:
+    parsed = _extract_graph_evidence_block(extracted)
+    if parsed is None:
         log_telemetry("graph_evidence_extract_error", {"stage": "parse", "error": "invalid_format"})
         return "INVALID_GRAPH"
+    if is_dark_mode:
+        recovered = _recover_dark_mode_key_point(
+            client=client,
+            model_name=model_name,
+            graph_b64=graph_b64,
+            timeout=max(8, int(timeout)),
+            existing_key_points=list(parsed.get("key_points", []) or []),
+        )
+        if recovered is not None:
+            keypoint_value = f"(x={_format_coord_value(recovered['x'])}, y={_format_coord_value(recovered['y'])})"
+            updated = _upsert_graph_evidence_field_line(extracted, "KEY_POINTS", keypoint_value)
+            reparsed = _extract_graph_evidence_block(updated)
+            if reparsed is not None:
+                extracted = updated
+            log_telemetry(
+                "graph_evidence_dark_mode_recovery",
+                {
+                    "applied": reparsed is not None,
+                    "keypoint": keypoint_value,
+                    "source": "candidate_rerank",
+                },
+            )
     return extracted
 
 

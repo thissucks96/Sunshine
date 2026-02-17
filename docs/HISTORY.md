@@ -1,3 +1,16 @@
+## 2026-02-17 — Conditional Forensic Recovery For Dark-Mode Key-Points
+
+- Runtime enhancement in `llm_pipeline.py` for dark-mode graph extraction recovery:
+  - Added dark-mode detection using filename cues and luminance histogram checks.
+  - Added conditional dark-mode forensic extraction prompt append (mental inversion + anchor mapping + noise filtering).
+  - Added dark-mode key-point recovery pass that requests 3 coordinate candidates and reranks to a final coordinate using integer-consensus + median fallback.
+  - Added `KEY_POINTS` upsert into `GRAPH_EVIDENCE` block after recovery.
+- Added tests: `tests/test_dark_mode_recovery.py` (detection, candidate parsing/rerank, and graph-evidence key-point upsert behavior).
+- Hard-tier-only validation artifact after this change:
+  - `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_210654.json`
+  - Result: `70.00%` (7/10), improved from prior `60.00%` tier run.
+  - Remaining misses: dark-mode coordinate drift on files `(2)`, `(3)`, and `(5)` variants.
+
 ## 2026-02-17 — Tiered Accuracy Run + Final Prompt Polish (Dark-Mode/Key-Point Focus)
 
 - Executed tiered extraction benchmark on `tests/GRAPH_CHECKER/graph_only_tagged_v1` with rule-based scoring.

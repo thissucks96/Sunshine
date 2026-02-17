@@ -124,6 +124,7 @@
   - query-anchor wording added for `KEY_POINTS` extraction (for example f(2), g(-2), h(x)=13)
   - dark-mode wording added for low-contrast handling via axis calibration and high-contrast curve focus
   - inline comment markers were removed from block examples to prevent response contamination
+  - conditional dark-mode forensic override is applied during extraction when dark-mode detection is triggered
 - Forensic hardening added:
   - observation-first visual witness rule (no algebraic inference from surrounding text)
   - scale-first calibration requirement before coordinate reporting
@@ -146,6 +147,10 @@
   - required fields are still mandatory
   - unknown uppercase fields inside `GRAPH_EVIDENCE` are ignored
   - optional `INTERCEPTS`/`KEY_POINTS` are parsed when present
+- Dark-mode recovery behavior:
+  - when dark-mode is detected, extraction runs with additional forensic guidance
+  - a second candidate pass requests `KEY_POINT_CANDIDATES` and reranks to a final `KEY_POINTS` coordinate
+  - final coordinate is upserted into the `GRAPH_EVIDENCE` block only if the updated block remains parser-valid
 
 **Solve-Time Usage**
 - Cached graph evidence is injected only when:
@@ -157,6 +162,7 @@
   - Extractor smoke: `tests/GRAPH_CHECKER/extractor_smoke_20260216_201044.log` (38/38 parser-valid on `graph_only`).
   - Tiered benchmark baseline: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_204619.json` (Easy 100.00%, Medium 75.00%, Hard 40.00%).
   - Tiered benchmark after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (Easy 100.00%, Medium 87.50%, Hard 60.00%).
+  - Hard-tier-only run after conditional dark-mode recovery: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_210654.json` (Hard 70.00%).
 
 ### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
 
