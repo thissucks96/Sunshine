@@ -120,6 +120,10 @@
   - `INTERCEPTS`
   - `KEY_POINTS`
 - Behavioral asymptote instruction now explicitly allows detection from curve behavior (approaches constant x/y) even when no dashed guide is drawn.
+- Prompt tuning notes (current):
+  - query-anchor wording added for `KEY_POINTS` extraction (for example f(2), g(-2), h(x)=13)
+  - dark-mode wording added for low-contrast handling via axis calibration and high-contrast curve focus
+  - inline comment markers were removed from block examples to prevent response contamination
 - Forensic hardening added:
   - observation-first visual witness rule (no algebraic inference from surrounding text)
   - scale-first calibration requirement before coordinate reporting
@@ -151,6 +155,8 @@
 - Latest post-hardening validation artifacts:
   - Identifier benchmark: `tests/GRAPH_CHECKER/classifier_results_20260216_200749.log` (103/103).
   - Extractor smoke: `tests/GRAPH_CHECKER/extractor_smoke_20260216_201044.log` (38/38 parser-valid on `graph_only`).
+  - Tiered benchmark baseline: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_204619.json` (Easy 100.00%, Medium 75.00%, Hard 40.00%).
+  - Tiered benchmark after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (Easy 100.00%, Medium 87.50%, Hard 60.00%).
 
 ### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
 

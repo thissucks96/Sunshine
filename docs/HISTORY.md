@@ -1,3 +1,21 @@
+## 2026-02-17 — Tiered Accuracy Run + Final Prompt Polish (Dark-Mode/Key-Point Focus)
+
+- Executed tiered extraction benchmark on `tests/GRAPH_CHECKER/graph_only_tagged_v1` with rule-based scoring.
+- Baseline run artifact: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_204619.json` (`.txt` companion)
+  - Easy: `100.00%`
+  - Medium: `75.00%`
+  - Hard: `40.00%`
+  - Hard failures clustered as missed behavioral asymptotes and dark-mode coordinate drift.
+- Applied iterative prompt polish in `llm_pipeline.py`:
+  - strengthened behavioral horizontal asymptote wording
+  - reinforced query-anchor key-point extraction wording for low-contrast/dark-mode graphs
+  - removed inline `# optional` markers from block examples to avoid output contamination
+- Rerun artifact after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (`.txt` companion)
+  - Easy: `100.00%`
+  - Medium: `87.50%`
+  - Hard: `60.00%`
+  - Remaining hard misses are primarily dark-mode `KEY_POINTS` null/drift on files `(2)-(5)` dark mode variants.
+
 ## 2026-02-17 — Backward-Compatible Graph Evidence Usefulness Patch
 
 - Runtime parser update in `llm_pipeline.py` for graph evidence compatibility:
