@@ -1,3 +1,15 @@
+## 2026-02-17 — Documentation Sync: Graph Runtime Contract
+
+Description:
+Canonical docs now explicitly describe how graph identifier and graph extractor cooperate at REF prime and solve-time injection.
+
+Clarified Points:
+- Identifier JSON contract and `YES/NO` routing behavior.
+- Graph-mode bypass path (direct extraction).
+- Extractor required field schema and strict parser acceptance.
+- Ambiguity handling via `unclear`/`none`.
+- Fallback behavior when extraction output is invalid.
+
 ## 2026-02-17 — Graph Extractor Model Comparison Outcome
 
 Description:

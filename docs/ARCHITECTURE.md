@@ -78,6 +78,12 @@ User hotkey or tray action
 Classifier validation checkpoint:
 - Sequential run on full `tests/GRAPH_CHECKER/` corpus recorded 103/103 correct (100.00%), artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`.
 
+Graph runtime contract checkpoint:
+- Graph identifier and graph evidence extraction are both pinned to `gpt-5.2`.
+- Identifier returns JSON `YES/NO` + reasoning and is used only in REF-prime auto-detect flow.
+- Graph mode ON bypasses identifier and runs extraction directly at REF prime.
+- Extractor requires strict `GRAPH_EVIDENCE` schema; malformed outputs are treated as invalid and safely fall back.
+
 4 Runtime Flow Walkthrough
 Initialization
 1. Process starts at `main.py:733` (`main`).

@@ -95,6 +95,43 @@
 - Latest benchmark: `tests/GRAPH_CHECKER` full set achieved 103/103 (100.00%) in sequential no-exclusion mode; positive-only subset is maintained at `tests/GRAPH_CHECKER/graph_only/` (38 images).
 - Extraction A/B benchmark (`tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`): `gpt-5.2` is the production winner; `gpt-5-mini` under-detected graphs and `gpt-4o` showed structural drift against 5.2 evidence.
 
+### VII.1 Graph Identifier/Extractor Contract (Current Runtime)
+
+**Identifier Prompt Contract**
+- System prompt requires JSON-only output:
+  - `{"is_graph":"YES/NO","reasoning":"..."}`
+- Decision rule in prompt is explicit:
+  - If coordinate grid + axes + curve/line are present, classify `YES` even when table/text is also present.
+
+**Extractor Prompt Contract**
+- If image is not a coordinate-plane graph, extractor must return exactly `INVALID_GRAPH`.
+- Otherwise extractor must return exactly one `GRAPH_EVIDENCE` block with these fields:
+  - `LEFT_ENDPOINT` (`x`, `y`, `marker`)
+  - `RIGHT_ENDPOINT` (`x`, `y`, `marker`)
+  - `ASYMPTOTES`
+  - `DISCONTINUITIES`
+  - `SCALE` (`x_tick`, `y_tick`)
+  - `CONFIDENCE` (`0.0-1.0`)
+- Allowed ambiguity tokens are built into the schema (`unclear`, `none`), so uncertain visuals should degrade gracefully instead of forcing guesses.
+
+**Gating Behavior**
+- `graph_mode=ON` at REF prime:
+  - Bypasses identifier and runs extraction directly on image REF.
+- `graph_mode=OFF` + `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME=true`:
+  - Runs identifier first, then extraction only when identifier returns `YES`.
+- Otherwise:
+  - Falls back to normal REF classification flow.
+
+**Strict Parse Enforcement**
+- Extractor output is accepted only if `_extract_graph_evidence_block(...)` validates required header + field formats.
+- Invalid/malformed extraction is treated as `INVALID_GRAPH` and does not become active graph evidence.
+
+**Solve-Time Usage**
+- Cached graph evidence is injected only when:
+  - `graph_mode` is `ON`, and
+  - cached evidence passes parser validation.
+- If cached evidence is absent/invalid, solve falls back to standard REF context behavior.
+
 ### VIII. RETRY SYSTEM
 
 **A. Base Retry Loop**
@@ -129,6 +166,11 @@
 **A2. Auto Graph Identifier (Flag-Gated)**
 - Image REF priming path can run `detect_graph_presence(...)` when `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` is enabled.
 - Binary route: `YES` triggers graph-evidence extraction, `NO` falls back to standard REF classification.
+**A3. Variance Handling**
+- Extractor contract is strict on structure but tolerant on uncertain visuals:
+  - strict required fields and formatting
+  - tolerant value tokens (`unclear`, `none`) for partial/ambiguous graphs
+- This means the pipeline is not limited to perfect linear graphs, but it does require coordinate-graph context and schema compliance.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
 - Unified metadata fields: `graph_mode`, `graph_evidence`, `last_primed_ts`.

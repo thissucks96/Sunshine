@@ -1,3 +1,13 @@
+## 2026-02-17 — Clarify Graph Identifier/Extractor Runtime Contract In Docs
+
+- Documentation update only: clarified end-to-end graph runtime behavior in canonical map docs.
+- Added explicit contract details for:
+  - identifier JSON schema and gating conditions
+  - extractor required `GRAPH_EVIDENCE` field list
+  - strict parser enforcement with tolerant value tokens (`unclear`, `none`)
+  - solve-time evidence injection/fallback behavior
+- No runtime code changes.
+
 ## 2026-02-17 — Graph Extractor A/B Result: gpt-5.2 Decisive Winner
 
 - Ran extraction-only comparison on `tests/GRAPH_CHECKER/graph_only` (38 graph images) with:
