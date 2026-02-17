@@ -1,3 +1,17 @@
+## 2026-02-17 — Forensic Prompt-Hardening for Graph Identifier/Extractor
+
+- Runtime prompt update in `llm_pipeline.py`:
+  - Hardened `GRAPH_IDENTIFIER_PROMPT` to strict JSON-only binary triage with explicit axes+plot guard rule.
+  - Hardened `GRAPH_EVIDENCE_EXTRACTION_PROMPT` with observation-first, scale-first, unknown-safety, strict marker semantics, and asymptote safety instructions.
+  - Synchronized `GRAPH_EVIDENCE_PROMPT_APPEND` with the same forensic extraction constraints for solve-time consistency.
+- Parser/output contract preserved:
+  - `GRAPH_EVIDENCE` top-level keys unchanged.
+  - `WORK:` / `FINAL ANSWER:` headers unchanged.
+  - Clipboard flow and retry policy (graph retry disabled) unchanged.
+- Verification after prompt hardening:
+  - `python tests/verify_classifier.py` on `tests/GRAPH_CHECKER` returned 103/103 (100.00%), artifact `tests/GRAPH_CHECKER/classifier_results_20260216_200749.log`.
+  - Graph extractor smoke run on `tests/GRAPH_CHECKER/graph_only` returned 38/38 parser-valid, artifact `tests/GRAPH_CHECKER/extractor_smoke_20260216_201044.log`.
+
 ## 2026-02-17 — Kick Off Graph Extractor Prompt-Hardening Track (Docs Only)
 
 - Documentation-only direction update: next iteration will harden the graph extractor prompt with stricter observation-first rules.

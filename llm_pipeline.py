@@ -105,7 +105,14 @@ STARRED_CONTEXT_GUIDE = (
 )
 
 GRAPH_EVIDENCE_PROMPT_APPEND = (
-    "For graph problems only, begin WORK with a structured GRAPH_EVIDENCE block:\n"
+    "For graph problems only, begin WORK with a structured GRAPH_EVIDENCE block.\n"
+    "Forensic rules of engagement:\n"
+    "- Observation-first: act as a visual witness only. Do not infer from problem text.\n"
+    "- Scale-first: locate axis labels before coordinates. If labels are not visible, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
+    "- Unknown safety: if blurry/cutoff/obstructed, use unclear for affected values.\n"
+    "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
+    "- Asymptotes: report only visual guide boundaries from curve behavior; do not label x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
+    "Output exactly this block shape:\n"
     "GRAPH_EVIDENCE:\n"
     "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
     "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
@@ -113,12 +120,19 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
     "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
     "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
     "  CONFIDENCE: <0.0-1.0>\n"
-    "Inside GRAPH_EVIDENCE do not include the boundary markers WORK, FINAL ANSWER, or [FINAL].\n"
+    "Inside GRAPH_EVIDENCE do not include WORK, FINAL ANSWER, or [FINAL].\n"
     "After GRAPH_EVIDENCE, continue normal WORK reasoning.\n"
 )
 
 GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
     "You are extracting structured evidence from a graph image only.\n"
+    "Forensic rules of engagement:\n"
+    "- Observation-first: you are a visual witness. Do not perform algebraic inference from text.\n"
+    "- Only report features visible in pixels; if not visible, treat as absent or unclear.\n"
+    "- Scale-first calibration: identify axis-unit labels before coordinates. If labels are absent, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
+    "- Unknown safety: if image is blurry/cutoff/obstructed, use unclear for those values.\n"
+    "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
+    "- Asymptotes: identify visual vertical/horizontal guide boundaries from curve behavior; do not classify x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
     "If the image is not a graph on coordinate axes, return exactly: INVALID_GRAPH\n"
     "Otherwise return exactly this block and nothing else:\n"
     "GRAPH_EVIDENCE:\n"
@@ -134,10 +148,13 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
 GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
 
 GRAPH_IDENTIFIER_PROMPT = (
-    "Identify if a coordinate graph/plot is present. If there is a grid with axes and a curve/line, "
-    "it is a YES, even if other elements like tables or text are present.\n"
-    "Return JSON only with exact schema:\n"
-    '{"is_graph": "YES/NO", "reasoning": "Concise explanation of visual cues found or missing"}'
+    "Your sole task is to determine whether a coordinate axes graph is present.\n"
+    "A coordinate graph means visible grid and x/y axes with at least one plotted line or curve.\n"
+    "If it exists, even with text, tables, or UI elements present, return exactly:\n"
+    '{"is_graph": "YES", "reasoning": "..."}\n'
+    "If no coordinate axes graph exists, return exactly:\n"
+    '{"is_graph": "NO", "reasoning": "..."}\n'
+    "Return JSON only. No markdown, no code fences, no extra keys."
 )
 # Graph presence detection is pinned to the strongest graph vision model.
 GRAPH_IDENTIFIER_MODEL = "gpt-5.2"

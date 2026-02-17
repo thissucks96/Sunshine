@@ -102,6 +102,9 @@
   - `{"is_graph":"YES/NO","reasoning":"..."}`
 - Decision rule in prompt is explicit:
   - If coordinate grid + axes + curve/line are present, classify `YES` even when table/text is also present.
+- Forensic hardening added:
+  - binary-only response contract (no extra keys/fences/prose)
+  - explicit guard rule that auxiliary UI/text/table content does not negate `YES`
 
 **Extractor Prompt Contract**
 - If image is not a coordinate-plane graph, extractor must return exactly `INVALID_GRAPH`.
@@ -113,6 +116,12 @@
   - `SCALE` (`x_tick`, `y_tick`)
   - `CONFIDENCE` (`0.0-1.0`)
 - Allowed ambiguity tokens are built into the schema (`unclear`, `none`), so uncertain visuals should degrade gracefully instead of forcing guesses.
+- Forensic hardening added:
+  - observation-first visual witness rule (no algebraic inference from surrounding text)
+  - scale-first calibration requirement before coordinate reporting
+  - explicit unknown safety for blurry/cutoff/obstructed visuals
+  - strict endpoint marker semantics (open/closed/arrow)
+  - asymptote safety rule (do not label axes as asymptotes without visible curve behavior evidence)
 
 **Gating Behavior**
 - `graph_mode=ON` at REF prime:
@@ -131,6 +140,9 @@
   - `graph_mode` is `ON`, and
   - cached evidence passes parser validation.
 - If cached evidence is absent/invalid, solve falls back to standard REF context behavior.
+- Latest post-hardening validation artifacts:
+  - Identifier benchmark: `tests/GRAPH_CHECKER/classifier_results_20260216_200749.log` (103/103).
+  - Extractor smoke: `tests/GRAPH_CHECKER/extractor_smoke_20260216_201044.log` (38/38 parser-valid on `graph_only`).
 
 ### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
 
