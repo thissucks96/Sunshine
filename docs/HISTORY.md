@@ -1,3 +1,16 @@
+## 2026-02-17 — Light-Mode Final Acceptance Run (Dark-Mode Excluded Scope)
+
+- Executed final tiered report on 33 files (full graph set excluding filenames containing `dark mode`).
+- Artifact:
+  - `tests/GRAPH_CHECKER/lightmode_tiered_accuracy_20260216_212033.json`
+  - `tests/GRAPH_CHECKER/lightmode_tiered_accuracy_20260216_212033.txt`
+- Results:
+  - Easy: `100.00%` (endpoint/domain checks)
+  - Medium: `87.50%` (remaining miss: `graph is present (14).png` key-point extraction)
+  - Hard: `100.00%` (behavioral asymptote checks)
+- Merge status:
+  - `77a45e7` is already contained in `master` and requires no further merge action.
+
 ## 2026-02-17 — Strategic Pivot: Freeze Dark-Mode Tuning, Finalize Schema/Robustness Sprint
 
 - Product decision:

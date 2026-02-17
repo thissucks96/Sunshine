@@ -5,6 +5,8 @@
 - Dark/Low-Contrast images are supported as "Best Effort" only.
 - Coordinate drift of ±0.2 is expected in these cases.
 - This is a known limitation of the stress test configuration.
+- System is optimized for standard light-mode graphs.
+- Dark mode support is currently experimental.
 
 ## Scope Notes
 
