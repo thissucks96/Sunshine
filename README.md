@@ -16,8 +16,7 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 Optional context flow:
 1. Copy reference content (text/image) to clipboard.
 2. Press `ctrl+shift+s` to prime REF.
-3. Default all-in-one behavior: prime image REF normally; graph handling follows current runtime settings automatically.
-4. Optional override: use tray `GRAPH MODE ON/OFF` only when you want to force the next image REF through graph-mode extraction.
+3. Optional override: use tray `GRAPH MODE ON/OFF` only when you want to force the next image REF through graph-mode extraction.
 5. Press `ctrl+shift+s` again to clear REF when done.
 
 Core controls:
