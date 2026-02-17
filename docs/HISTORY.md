@@ -1,3 +1,10 @@
+## 2026-02-17 — Kick Off Graph Extractor Prompt-Hardening Track (Docs Only)
+
+- Documentation-only direction update: next iteration will harden the graph extractor prompt with stricter observation-first rules.
+- Planned prompt refinements include scale-first reading, strict marker semantics (open/closed/arrow), and explicit unknown handling for ambiguous visuals.
+- Expected downstream impact: parser/normalization tolerance checks may need minor adjustments for richer evidence wording while preserving `WORK:` / `FINAL ANSWER:` headers and clipboard flow.
+- No runtime code changes in this entry.
+
 ## 2026-02-17 — Clarify Graph Identifier/Extractor Runtime Contract In Docs
 
 - Documentation update only: clarified end-to-end graph runtime behavior in canonical map docs.

@@ -27,8 +27,8 @@ Then wait for explicit user approval before producing the final Codex instructio
 
 ## Next Feature Target
 
-* Graph-mode evidence quality improvements and optional auto-model follow-up
-* Objective: improve reliability of cached graph evidence while preserving solve/output contract stability
+* Graph-mode evidence quality improvements through extractor prompt hardening
+* Objective: reduce coordinate/marker hallucinations and verify parser/formatting compatibility while preserving solve/output contract stability
 
 ## Constraints
 
@@ -40,6 +40,7 @@ Then wait for explicit user approval before producing the final Codex instructio
 ## Expectations For Next Session
 
 * Validate graph-mode behavior under mixed text/image REF scenarios
+* Validate hardened extractor prompt outputs against current graph-evidence parser expectations
 * Keep forced visual extraction flag-gated and graph retry disabled
 * Review low-risk instrumentation improvements before model-routing changes
 * Follow AGENTS.md operating rules for scope control validation and commit hygiene

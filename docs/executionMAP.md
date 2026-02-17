@@ -132,6 +132,17 @@
   - cached evidence passes parser validation.
 - If cached evidence is absent/invalid, solve falls back to standard REF context behavior.
 
+### VII.2 Graph Extractor Prompt-Hardening Track (Planned)
+
+- Current status: investigation/planning only; runtime behavior is unchanged in this map section.
+- Next prompt iteration will enforce stricter observation-first extraction:
+  - read and lock scale before reporting coordinates
+  - use strict marker semantics (open vs closed vs arrow continuation)
+  - use ambiguity-safe values (`unclear`) instead of guessed coordinates
+- Compatibility requirement:
+  - if prompt wording changes introduce equivalent but varied field-value phrasing, update parser/format tolerance narrowly
+  - do not alter `WORK:` / `FINAL ANSWER:` headers, solve loop contract, or clipboard write flow
+
 ### VIII. RETRY SYSTEM
 
 **A. Base Retry Loop**

@@ -84,6 +84,11 @@ Graph runtime contract checkpoint:
 - Graph mode ON bypasses identifier and runs extraction directly at REF prime.
 - Extractor requires strict `GRAPH_EVIDENCE` schema; malformed outputs are treated as invalid and safely fall back.
 
+Graph extractor prompt-hardening checkpoint (planned):
+- Next step is tightening extractor instructions toward observation-first behavior to reduce coordinate/marker hallucinations.
+- Planned instruction emphasis: scale-first interpretation, strict endpoint/arrow semantics, and explicit `unclear` when evidence is blocked.
+- Any downstream parser/normalization tweaks must remain narrow and contract-safe (`WORK:` / `FINAL ANSWER:` and clipboard flow unchanged).
+
 4 Runtime Flow Walkthrough
 Initialization
 1. Process starts at `main.py:733` (`main`).

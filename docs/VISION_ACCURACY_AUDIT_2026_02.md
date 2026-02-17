@@ -15,6 +15,14 @@
 - Run artifact: `tests/GRAPH_CHECKER/extract_compare_models_20260216_192631.log`.
 - Decision: keep graph extraction runtime pinned to `gpt-5.2`.
 
+0.2 Graph Extractor Prompt-Hardening Track (Planned)
+- Next iteration will tighten graph extractor instructions to observation-first behavior.
+- Emphasis areas:
+  - lock axis scale before coordinate reporting
+  - strict marker interpretation (open/closed/arrow)
+  - explicit `unclear` for ambiguous or clipped evidence
+- Follow-on validation will check parser/normalization tolerance needs without changing `WORK:` / `FINAL ANSWER:` or clipboard contract.
+
 1 Vision Data Flow
 1. Image capture starts in `main.py:444` (`def worker`). The worker reads clipboard via `safe_clipboard_read()`.
    Anchor: `main.py:463`, search token `raw_clip, _ = safe_clipboard_read()`.

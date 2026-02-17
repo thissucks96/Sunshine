@@ -71,6 +71,8 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
 4. Add targeted regression vectors for fragile output normalization cases.
 5. Implement top vision accuracy actions from `docs/VISION_ACCURACY_AUDIT_2026_02.md`:
    - graph evidence extraction pass
+   - prompt hardening for observation-first graph extraction (scale/marker strictness + unknown-on-ambiguity)
+   - parser/normalization tolerance validation against hardened extractor output
    - WORK-vs-FINAL interval consistency checks
    - expanded graph retry triggers
    - dual OCR reconciliation path

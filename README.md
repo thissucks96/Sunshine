@@ -29,6 +29,7 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - Graph-mode targeted test suite: passing (`tests/test_graph_mode_behavior.py`)
 - Feature flags default: OFF
 - Output contract stability preserved (`WORK:` / `FINAL ANSWER:` unchanged)
+- Current docs-tracked next step: harden graph extractor prompt and run formatting-compat checks before any output-template changes.
 
 ## Branching Strategy
 - Active stabilization branch: `feature/forced-visual-extraction`

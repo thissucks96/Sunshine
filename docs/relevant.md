@@ -1,3 +1,16 @@
+## 2026-02-17 — Prompt-Hardening Investigation (Graph Extractor)
+
+Description:
+Starting focused prompt hardening for graph extraction quality, especially on non-linear/ambiguous graph visuals.
+
+Current Finding:
+- Runtime contracts and model pinning are stable (`gpt-5.2` for graph identifier/extractor paths), but endpoint/marker variance still motivates stricter extraction instructions.
+
+Planned Work:
+- Tighten extractor instructions to observation-first behavior (no coordinate guessing, scale-first interpretation, strict marker criteria).
+- Validate parser compatibility against revised extractor wording and field output variance.
+- If needed, apply narrow formatting-tolerance updates without changing solve output headers or clipboard contract.
+
 ## 2026-02-17 — Documentation Sync: Graph Runtime Contract
 
 Description:
