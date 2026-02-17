@@ -133,6 +133,14 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
 # Graph evidence extraction is intentionally pinned to the strongest visual model.
 GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
 
+GRAPH_IDENTIFIER_PROMPT = (
+    "Classify whether this image contains a coordinate-plane graph suitable for math graph analysis.\n"
+    "Return exactly these lines and nothing else:\n"
+    "IS_GRAPH: YES or NO\n"
+    "CONFIDENCE: <0.0-1.0>\n"
+    "REASON: <very short reason>\n"
+)
+
 FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "MANDATORY VISUAL EXTRACTION STEP:\n"
     "Before computing any answer, explicitly extract ALL of the following in your WORK section:\n"
@@ -431,6 +439,122 @@ def extract_graph_evidence(
         log_telemetry("graph_evidence_extract_error", {"stage": "parse", "error": "invalid_format"})
         return "INVALID_GRAPH"
     return extracted
+
+
+def _parse_graph_identifier_response(raw_text: str) -> Dict[str, Any]:
+    raw = str(raw_text or "").strip()
+    if not raw:
+        return {"is_graph": False, "confidence": 0.0, "reason": "", "raw": raw}
+
+    # Accept structured JSON if model returns it despite prompt format.
+    if raw.startswith("{") and raw.endswith("}"):
+        try:
+            data = json.loads(raw)
+            graph_val = data.get("is_graph", data.get("graph", False))
+            conf_val = data.get("confidence", 0.0)
+            reason_val = str(data.get("reason", "") or "").strip()
+            confidence = max(0.0, min(1.0, float(conf_val)))
+            return {
+                "is_graph": bool(graph_val),
+                "confidence": confidence,
+                "reason": reason_val,
+                "raw": raw,
+            }
+        except Exception:
+            pass
+
+    m_graph = re.search(r"IS_GRAPH:\s*(YES|NO)", raw, flags=re.IGNORECASE)
+    m_conf = re.search(r"CONFIDENCE:\s*([01](?:\.\d+)?)", raw, flags=re.IGNORECASE)
+    m_reason = re.search(r"REASON:\s*(.+)", raw, flags=re.IGNORECASE)
+
+    is_graph = bool(m_graph and m_graph.group(1).strip().upper() == "YES")
+    try:
+        confidence = float(m_conf.group(1)) if m_conf else 0.0
+    except Exception:
+        confidence = 0.0
+    confidence = max(0.0, min(1.0, confidence))
+    reason = (m_reason.group(1) if m_reason else "").strip()
+    return {"is_graph": is_graph, "confidence": confidence, "reason": reason, "raw": raw}
+
+
+def detect_graph_presence(
+    img_b64: str,
+    client: OpenAI,
+    model_name: str,
+    timeout: int,
+) -> Dict[str, Any]:
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": GRAPH_IDENTIFIER_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{img_b64}"}]},
+    ]
+    try:
+        raw = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=max(6, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=80,
+            flow_name="graph_identifier",
+        )
+    except Exception as e:
+        log_telemetry("graph_identifier_error", {"stage": "api", "model": model_name, "error": str(e)})
+        return {"is_graph": False, "confidence": 0.0, "reason": "", "raw": ""}
+    result = _parse_graph_identifier_response(raw)
+    result["model"] = str(model_name or "")
+    return result
+
+
+def _prime_graph_reference_with_evidence(
+    client: OpenAI,
+    cfg: Dict[str, Any],
+    meta: Dict[str, Any],
+    img: Image.Image,
+    img_b64: str,
+    summary_model: str,
+    status_start: str,
+    telemetry_event: str,
+) -> None:
+    img_dir = _starred_base_dir()
+    img_path = os.path.join(img_dir, STARRED_IMG_FILE)
+    img.save(img_path, format="PNG")
+    summary = _summarize_visual_reference(
+        client=client,
+        model_name=summary_model,
+        img_b64=img_b64,
+        timeout=int(cfg.get("classify_timeout", 8)),
+    ) or "graph reference"
+
+    meta.update({
+        "reference_active": True,
+        "reference_type": REFERENCE_TYPE_IMG,
+        "text_path": "",
+        "image_path": img_path,
+        "reference_summary": summary,
+    })
+    set_status(status_start)
+    graph_evidence = extract_graph_evidence(
+        image_path=img_path,
+        client=client,
+        model_name=GRAPH_EVIDENCE_EXTRACTION_MODEL,
+        timeout=int(cfg.get("ocr_timeout", 12)),
+    )
+    meta["graph_evidence"] = graph_evidence
+    meta["last_primed_ts"] = int(time.time())
+    save_starred_meta(meta)
+    _set_reference_indicator_from_meta(meta)
+    log_telemetry(
+        telemetry_event,
+        {
+            "evidence_valid": _is_valid_graph_evidence_text(graph_evidence),
+            "summary_length": len(summary),
+            "extraction_model": GRAPH_EVIDENCE_EXTRACTION_MODEL,
+        },
+    )
+    if _is_valid_graph_evidence_text(graph_evidence):
+        set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE READY")
+    else:
+        set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE INVALID (fallback enabled)")
 
 
 def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
@@ -1706,46 +1830,16 @@ def toggle_star_worker(client: OpenAI) -> None:
         try:
             img = normalize_image_for_api(raw_clip, cfg)
             img_b64 = image_to_base64_png(img)
-            img_dir = _starred_base_dir()
-            img_path = os.path.join(img_dir, STARRED_IMG_FILE)
-            img.save(img_path, format="PNG")
-            summary = _summarize_visual_reference(
+            _prime_graph_reference_with_evidence(
                 client=client,
-                model_name=ref_model,
+                cfg=cfg,
+                meta=meta,
+                img=img,
                 img_b64=img_b64,
-                timeout=int(cfg.get("classify_timeout", 8)),
-            ) or "graph reference"
-
-            meta.update({
-                "reference_active": True,
-                "reference_type": REFERENCE_TYPE_IMG,
-                "text_path": "",
-                "image_path": img_path,
-                "reference_summary": summary,
-            })
-            set_status("Graph Mode ON: extracting graph evidence...")
-            graph_evidence = extract_graph_evidence(
-                image_path=img_path,
-                client=client,
-                model_name=GRAPH_EVIDENCE_EXTRACTION_MODEL,
-                timeout=int(cfg.get("ocr_timeout", 12)),
+                summary_model=ref_model,
+                status_start="Graph Mode ON: extracting graph evidence...",
+                telemetry_event="graph_mode_ref_primed",
             )
-            meta["graph_evidence"] = graph_evidence
-            meta["last_primed_ts"] = int(time.time())
-            save_starred_meta(meta)
-            _set_reference_indicator_from_meta(meta)
-            log_telemetry(
-                "graph_mode_ref_primed",
-                {
-                    "evidence_valid": _is_valid_graph_evidence_text(graph_evidence),
-                    "summary_length": len(summary),
-                    "extraction_model": GRAPH_EVIDENCE_EXTRACTION_MODEL,
-                },
-            )
-            if _is_valid_graph_evidence_text(graph_evidence):
-                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE READY")
-            else:
-                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE INVALID (fallback enabled)")
             return
         except Exception as e:
             log_telemetry("graph_mode_prime_error", {"error": str(e)})
@@ -1757,6 +1851,52 @@ def toggle_star_worker(client: OpenAI) -> None:
         try:
             img = normalize_image_for_api(raw_clip, cfg)
             img_b64 = image_to_base64_png(img)
+            auto_graph_detect_ref_prime = bool(cfg.get("ENABLE_AUTO_GRAPH_DETECT_REF_PRIME", False))
+            graph_identifier_model = str(cfg.get("graph_identifier_model", ref_model) or ref_model).strip() or ref_model
+            try:
+                graph_identifier_min_confidence = float(cfg.get("graph_identifier_min_confidence", 0.75))
+            except Exception:
+                graph_identifier_min_confidence = 0.75
+            graph_identifier_min_confidence = max(0.0, min(1.0, graph_identifier_min_confidence))
+
+            if auto_graph_detect_ref_prime:
+                detection = detect_graph_presence(
+                    img_b64=img_b64,
+                    client=client,
+                    model_name=graph_identifier_model,
+                    timeout=int(cfg.get("classify_timeout", 8)),
+                )
+                detected_graph = bool(detection.get("is_graph", False))
+                try:
+                    detected_conf = float(detection.get("confidence", 0.0) or 0.0)
+                except Exception:
+                    detected_conf = 0.0
+                detected_conf = max(0.0, min(1.0, detected_conf))
+                detection_hit = detected_graph and detected_conf >= graph_identifier_min_confidence
+                log_telemetry(
+                    "graph_identifier_decision",
+                    {
+                        "enabled": True,
+                        "model": graph_identifier_model,
+                        "is_graph": detected_graph,
+                        "confidence": detected_conf,
+                        "threshold": graph_identifier_min_confidence,
+                        "decision": "graph_extract" if detection_hit else "normal_ref",
+                        "reason": str(detection.get("reason", "") or ""),
+                    },
+                )
+                if detection_hit:
+                    _prime_graph_reference_with_evidence(
+                        client=client,
+                        cfg=cfg,
+                        meta=meta,
+                        img=img,
+                        img_b64=img_b64,
+                        summary_model=ref_model,
+                        status_start="Graph auto-detected: extracting graph evidence...",
+                        telemetry_event="graph_auto_ref_primed",
+                    )
+                    return
 
             classify_payload = [
                 {"role": "system", "content": [{"type": "input_text", "text": STAR_CLASSIFY_PROMPT}]},

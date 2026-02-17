@@ -74,6 +74,7 @@
 - Introduce auto graph-identification incrementally, starting with REF-prime-only detection using a dedicated `graph_identifier_model` selector.
 - Keep graph toggle in place until classifier behavior is validated and telemetry confirms stable precision/recall.
 - Use `tests/GRAPH_CHECKER/` as the baseline sample graph set for identifier validation runs.
+- Current implementation status: REF-prime graph identifier function exists behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default OFF); confidence threshold tuning remains in-progress.
 - Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.

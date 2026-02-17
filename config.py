@@ -37,6 +37,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "ENABLE_CONSISTENCY_WARNINGS": False,
     "ENABLE_CONSISTENCY_BLOCKING": False,
     "ENABLE_FORCED_VISUAL_EXTRACTION": False,
+    "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": False,
+    "graph_identifier_min_confidence": 0.75,
     "graph_mode": False,
     "graph_evidence": None,
     "last_primed_ts": 0,
@@ -211,6 +213,28 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     if normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION") != forced_visual_extraction:
         normalized["ENABLE_FORCED_VISUAL_EXTRACTION"] = forced_visual_extraction
+
+    auto_graph_detect_ref_prime = bool(
+        normalized.get(
+            "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME",
+            DEFAULT_CONFIG["ENABLE_AUTO_GRAPH_DETECT_REF_PRIME"],
+        )
+    )
+    if normalized.get("ENABLE_AUTO_GRAPH_DETECT_REF_PRIME") != auto_graph_detect_ref_prime:
+        normalized["ENABLE_AUTO_GRAPH_DETECT_REF_PRIME"] = auto_graph_detect_ref_prime
+
+    try:
+        graph_identifier_min_confidence = float(
+            normalized.get(
+                "graph_identifier_min_confidence",
+                DEFAULT_CONFIG["graph_identifier_min_confidence"],
+            )
+        )
+    except Exception:
+        graph_identifier_min_confidence = float(DEFAULT_CONFIG["graph_identifier_min_confidence"])
+    graph_identifier_min_confidence = max(0.0, min(1.0, graph_identifier_min_confidence))
+    if normalized.get("graph_identifier_min_confidence") != graph_identifier_min_confidence:
+        normalized["graph_identifier_min_confidence"] = graph_identifier_min_confidence
 
     graph_mode = bool(normalized.get("graph_mode", DEFAULT_CONFIG["graph_mode"]))
     if normalized.get("graph_mode") != graph_mode:

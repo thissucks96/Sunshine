@@ -120,6 +120,81 @@ class GraphModeBehaviorTests(unittest.TestCase):
         self.assertFalse(any("GRAPH MODE CACHED EVIDENCE" in t for t in texts_invalid))
         self.assertFalse(any("GRAPH MODE CACHED EVIDENCE" in t for t in texts_absent))
 
+    def test_auto_graph_identifier_routes_ref_prime_to_graph_extraction_when_confident(self):
+        cfg = {
+            "model": "gpt-4o-mini",
+            "reference_summary_model": "gpt-4o-mini",
+            "graph_identifier_model": "gpt-4o-mini",
+            "graph_identifier_min_confidence": 0.75,
+            "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": True,
+            "classify_timeout": 8,
+            "ocr_timeout": 12,
+            "max_image_side": 4096,
+            "max_image_pixels": 16_000_000,
+        }
+        graph_img = Image.new("RGB", (16, 16), "white")
+
+        with tempfile.TemporaryDirectory() as td, patch.object(
+            llm_pipeline, "app_home_dir", return_value=td
+        ), patch.object(
+            llm_pipeline, "get_config", return_value=cfg
+        ), patch.object(
+            llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
+        ), patch.object(
+            llm_pipeline, "detect_graph_presence", return_value={"is_graph": True, "confidence": 0.92, "reason": "axes"}
+        ) as mock_detect, patch.object(
+            llm_pipeline, "_summarize_visual_reference", return_value="graph panel reference"
+        ), patch.object(
+            llm_pipeline, "extract_graph_evidence", return_value=_VALID_GRAPH_EVIDENCE
+        ) as mock_extract, patch.object(
+            llm_pipeline, "set_status", return_value=None
+        ):
+            llm_pipeline.toggle_star_worker(client=object())
+            updated = llm_pipeline.load_starred_meta()
+
+        self.assertEqual(mock_detect.call_args.kwargs.get("model_name"), "gpt-4o-mini")
+        self.assertEqual(mock_extract.call_args.kwargs.get("model_name"), "gpt-5.2")
+        self.assertEqual(updated.get("reference_type"), llm_pipeline.REFERENCE_TYPE_IMG)
+        self.assertEqual(updated.get("graph_evidence"), _VALID_GRAPH_EVIDENCE.strip())
+
+    def test_auto_graph_identifier_falls_back_to_normal_ref_when_below_threshold(self):
+        cfg = {
+            "model": "gpt-4o-mini",
+            "reference_summary_model": "gpt-4o-mini",
+            "graph_identifier_model": "gpt-4o-mini",
+            "graph_identifier_min_confidence": 0.90,
+            "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": True,
+            "classify_timeout": 8,
+            "ocr_timeout": 12,
+            "max_image_side": 4096,
+            "max_image_pixels": 16_000_000,
+        }
+        graph_img = Image.new("RGB", (16, 16), "white")
+
+        with tempfile.TemporaryDirectory() as td, patch.object(
+            llm_pipeline, "app_home_dir", return_value=td
+        ), patch.object(
+            llm_pipeline, "get_config", return_value=cfg
+        ), patch.object(
+            llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
+        ), patch.object(
+            llm_pipeline, "detect_graph_presence", return_value={"is_graph": True, "confidence": 0.55, "reason": "weak"}
+        ), patch.object(
+            llm_pipeline, "_responses_text", return_value="VISUAL"
+        ), patch.object(
+            llm_pipeline, "_summarize_visual_reference", return_value="visual reference"
+        ), patch.object(
+            llm_pipeline, "extract_graph_evidence", return_value=_VALID_GRAPH_EVIDENCE
+        ) as mock_extract, patch.object(
+            llm_pipeline, "set_status", return_value=None
+        ):
+            llm_pipeline.toggle_star_worker(client=object())
+            updated = llm_pipeline.load_starred_meta()
+
+        self.assertIsNone(updated.get("graph_evidence"))
+        self.assertEqual(updated.get("reference_type"), llm_pipeline.REFERENCE_TYPE_IMG)
+        self.assertFalse(mock_extract.called)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,14 @@
+## 2026-02-17 — Add REF-Prime Graph Identifier Function (Flag-Gated)
+
+- Added graph identifier function path in `toggle_star_worker` for image REF priming only, behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default `False`).
+- Added `detect_graph_presence(...)` in `llm_pipeline.py` with confidence-threshold decisioning via `graph_identifier_min_confidence`.
+- Added behavior wiring: when enabled and detector is confident, REF image prime routes directly to graph evidence extraction; otherwise flow falls back to normal REF classification.
+- Added config defaults/normalization for:
+  - `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME`
+  - `graph_identifier_min_confidence`
+- Added tests for confident route and below-threshold fallback.
+- Graph toggle behavior is unchanged in this step.
+
 ## 2026-02-17 — Document Graph Identifier Sample Fixture Set
 
 - Added project note: `tests/GRAPH_CHECKER/` is the sample graph image set reserved for graph-identifier evaluation and tuning.

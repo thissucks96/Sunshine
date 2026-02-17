@@ -119,6 +119,9 @@
 - Graph mode uses the same REF toggle flow and graph mode ON is controlled by tray entry `GRAPH MODE ON/OFF`.
 **A1. Graph Extraction Model Pin**
 - During graph-mode image REF priming, graph evidence extraction is pinned to `gpt-5.2` for strongest visual parsing before solve-time reasoning.
+**A2. Auto Graph Identifier (Flag-Gated)**
+- Image REF priming path can run `detect_graph_presence(...)` when `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` is enabled.
+- If confidence meets `graph_identifier_min_confidence`, REF prime routes to graph-evidence extraction; otherwise it falls back to standard REF classification.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
 - Unified metadata fields: `graph_mode`, `graph_evidence`, `last_primed_ts`.
