@@ -18,6 +18,7 @@
   - `main.py:550` / `586` (Hotkey registration/trigger)
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
 - **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
+- **Graph REF Toggle:** Dedicated graph-reference toggle is available via tray/hotkey and dispatches to `toggle_graph_reference_worker(...)`.
 
 ### II. INPUT CLASSIFICATION LAYER
 
@@ -112,11 +113,14 @@
 
 **A. Activation**
 - `main.py:502`: `toggle_star_worker`
+- `main.py`: `toggle_graph_reference_worker` (graph-only image reference)
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
+- Graph slot fields in metadata: `graph_reference_active`, `graph_image_path`, `graph_reference_summary`
 **C. Injection**
 - `llm_pipeline.py:1251`: Meta loaded per solve.
 - `llm_pipeline.py:1348`: Injected into payload if active.
+- Graph-like solves can prefer graph reference image as secondary context while preserving standard REF for non-graph prompts.
 **D. Edge Cases**
 - Startup clears reference (`main.py:751`).
 - Model switch preserves reference.

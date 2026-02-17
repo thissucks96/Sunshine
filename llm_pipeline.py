@@ -30,6 +30,7 @@ STARRED_META_FILE = "STARRED_META.json"
 STARRED_TEXT_FILE = "STARRED.txt"
 STARRED_IMG_DIR = "REFERENCE_IMG"
 STARRED_IMG_FILE = "current_starred.png"
+GRAPH_REF_IMG_FILE = "current_graph_ref.png"
 
 REFERENCE_TYPE_IMG = "IMG"
 REFERENCE_TYPE_TEXT = "TEXT"
@@ -130,6 +131,19 @@ FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "Do NOT guess coordinates. Derive your FINAL ANSWER strictly from evidence."
 )
 
+GRAPH_INTENT_CUES = (
+    "domain",
+    "range",
+    "interval notation",
+    "open circle",
+    "closed circle",
+    "hole",
+    "asymptote",
+    "arrow",
+    "endpoint",
+    "discontinuity",
+)
+
 
 def _normalize_star_label(raw: str) -> str:
     s = " ".join(str(raw or "").upper().split())
@@ -172,6 +186,9 @@ def _default_reference_meta() -> Dict[str, Any]:
         "text_path": "",
         "image_path": "",
         "reference_summary": "",
+        "graph_reference_active": False,
+        "graph_image_path": "",
+        "graph_reference_summary": "",
     }
 
 
@@ -180,6 +197,8 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = str(meta.get("reference_summary", "") or "")
+    graph_reference_active = bool(meta.get("graph_reference_active", False))
+    graph_reference_summary = str(meta.get("graph_reference_summary", "") or "")
 
     # Backward compatibility for older STAR schema.
     if "enabled" in meta or "mode" in meta:
@@ -199,6 +218,8 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     if not reference_active:
         reference_type = None
         reference_summary = ""
+    if not graph_reference_active:
+        graph_reference_summary = ""
 
     return {
         "reference_active": reference_active,
@@ -206,6 +227,9 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
         "text_path": str(meta.get("text_path", "") or ""),
         "image_path": str(meta.get("image_path", "") or ""),
         "reference_summary": reference_summary,
+        "graph_reference_active": graph_reference_active,
+        "graph_image_path": str(meta.get("graph_image_path", "") or ""),
+        "graph_reference_summary": graph_reference_summary,
     }
 
 
@@ -245,6 +269,21 @@ def _clear_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
     return meta
 
 
+def _clear_graph_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
+    meta.update({
+        "graph_reference_active": False,
+        "graph_image_path": "",
+        "graph_reference_summary": "",
+    })
+    return meta
+
+
+def _set_reference_indicator_from_meta(meta: Dict[str, Any]) -> None:
+    set_reference_active(
+        bool(meta.get("reference_active", False) or meta.get("graph_reference_active", False))
+    )
+
+
 def clear_reference_state(source: str, status_message: Optional[str] = None) -> None:
     try:
         meta = load_starred_meta()
@@ -253,12 +292,13 @@ def clear_reference_state(source: str, status_message: Optional[str] = None) -> 
         meta = _default_reference_meta()
 
     _clear_reference(meta)
+    _clear_graph_reference(meta)
     try:
         save_starred_meta(meta)
     except Exception as e:
         log_telemetry("ref_clear_error", {"source": source, "error": str(e)})
 
-    set_reference_active(False)
+    _set_reference_indicator_from_meta(meta)
     log_telemetry("ref_clear", {"source": source})
     if status_message:
         set_status(status_message)
@@ -277,6 +317,13 @@ def preview_text(text: str, max_chars: int = 140) -> str:
 def _can_assign_reference(meta: Dict[str, Any]) -> bool:
     if bool(meta.get("reference_active", False)):
         set_status("REF is active. Press STAR again to clear first.")
+        return False
+    return True
+
+
+def _can_assign_graph_reference(meta: Dict[str, Any]) -> bool:
+    if bool(meta.get("graph_reference_active", False)):
+        set_status("GRAPH REF is active. Toggle GRAPH REF again to clear first.")
         return False
     return True
 
@@ -517,18 +564,7 @@ def _build_solve_payload(
     user_text = str(input_obj or "").lower() if isinstance(input_obj, str) else ""
     has_domain_range_intent = any(
         cue in user_text
-        for cue in (
-            "domain",
-            "range",
-            "interval notation",
-            "open circle",
-            "closed circle",
-            "hole",
-            "asymptote",
-            "arrow",
-            "endpoint",
-            "discontinuity",
-        )
+        for cue in GRAPH_INTENT_CUES
     )
     should_force_visual_extraction = bool(
         enable_forced_visual_extraction
@@ -1283,9 +1319,12 @@ def solve_pipeline(
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = preview_text(str(meta.get("reference_summary", "") or ""), 140)
-    set_reference_active(reference_active)
+    graph_reference_active = bool(meta.get("graph_reference_active", False))
+    graph_reference_summary = preview_text(str(meta.get("graph_reference_summary", "") or ""), 140)
+    _set_reference_indicator_from_meta(meta)
     reference_text = ""
     reference_img_b64 = ""
+    graph_reference_img_b64 = ""
 
     if reference_active:
         if reference_type == REFERENCE_TYPE_TEXT:
@@ -1293,7 +1332,7 @@ def solve_pipeline(
             if not tp or not os.path.exists(tp):
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: missing TEXT source. REF CLEARED")
                 return
             try:
@@ -1303,13 +1342,13 @@ def solve_pipeline(
                 log_telemetry("ref_text_read_error", {"error": str(e)})
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status(f"REF invalid: TEXT read failed. REF CLEARED. Error: {e}")
                 return
             if not reference_text:
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: empty TEXT source. REF CLEARED")
                 return
             if not reference_summary:
@@ -1319,7 +1358,7 @@ def solve_pipeline(
             if not ip or not os.path.exists(ip):
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: missing IMG source. REF CLEARED")
                 return
             try:
@@ -1330,25 +1369,69 @@ def solve_pipeline(
                 log_telemetry("ref_image_read_error", {"error": str(e)})
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status(f"REF invalid: IMG read failed. REF CLEARED. Error: {e}")
                 return
         else:
             _clear_reference(meta)
             save_starred_meta(meta)
-            set_reference_active(False)
+            _set_reference_indicator_from_meta(meta)
             set_status("REF invalid: unknown reference type. REF CLEARED")
             return
+
+    if graph_reference_active:
+        graph_ip = str(meta.get("graph_image_path", "") or "")
+        if not graph_ip or not os.path.exists(graph_ip):
+            _clear_graph_reference(meta)
+            save_starred_meta(meta)
+            _set_reference_indicator_from_meta(meta)
+            set_status("GRAPH REF invalid: missing IMG source. GRAPH REF CLEARED")
+            return
+        try:
+            with Image.open(graph_ip) as graph_im:
+                graph_im = normalize_image_for_api(graph_im.convert("RGB"), cfg)
+                graph_reference_img_b64 = image_to_base64_png(graph_im)
+        except Exception as e:
+            log_telemetry("graph_ref_image_read_error", {"error": str(e)})
+            _clear_graph_reference(meta)
+            save_starred_meta(meta)
+            _set_reference_indicator_from_meta(meta)
+            set_status(f"GRAPH REF invalid: IMG read failed. GRAPH REF CLEARED. Error: {e}")
+            return
+        if not graph_reference_summary:
+            graph_reference_summary = "graph reference"
 
     if isinstance(input_obj, Image.Image):
         input_obj = normalize_image_for_api(input_obj, cfg)
 
+    graph_problem_like = isinstance(input_obj, Image.Image)
+    if not graph_problem_like and isinstance(input_obj, str):
+        graph_problem_like = any(cue in input_obj.lower() for cue in GRAPH_INTENT_CUES)
+
+    use_graph_reference = bool(graph_reference_active and graph_reference_img_b64 and graph_problem_like)
+
+    effective_reference_active = reference_active
+    effective_reference_type = reference_type
+    effective_reference_text = reference_text
+    effective_reference_img_b64 = reference_img_b64
+    effective_reference_summary = reference_summary
+    reference_prefix_label = ""
+    if use_graph_reference:
+        effective_reference_active = True
+        effective_reference_type = REFERENCE_TYPE_IMG
+        effective_reference_text = ""
+        effective_reference_img_b64 = graph_reference_img_b64
+        effective_reference_summary = graph_reference_summary
+        reference_prefix_label = "GRAPH"
+    elif reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
+        reference_prefix_label = reference_type
+
     payload = _build_solve_payload(
         input_obj=input_obj,
-        reference_active=reference_active,
-        reference_type=reference_type,
-        reference_text=reference_text,
-        reference_img_b64=reference_img_b64,
+        reference_active=effective_reference_active,
+        reference_type=effective_reference_type,
+        reference_text=effective_reference_text,
+        reference_img_b64=effective_reference_img_b64,
         enable_graph_evidence_parsing=enable_graph_evidence_parsing,
     )
     payload_has_image = False
@@ -1381,7 +1464,10 @@ def solve_pipeline(
             "width": image_width,
             "height": image_height,
             "pixel_count": image_pixel_count,
-            "reference_image_included": bool(reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64),
+            "reference_image_included": bool(
+                effective_reference_active and effective_reference_type == REFERENCE_TYPE_IMG and effective_reference_img_b64
+            ),
+            "graph_reference_image_included": use_graph_reference,
         },
     )
 
@@ -1490,11 +1576,14 @@ def solve_pipeline(
         return
 
     ref_prefix = ""
-    if reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        effective_summary = reference_summary
+    if effective_reference_active and effective_reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
+        effective_summary = effective_reference_summary
         if not effective_summary:
-            effective_summary = "visual reference" if reference_type == REFERENCE_TYPE_IMG else "text reference"
-        ref_prefix = f"* REF {reference_type}: {effective_summary}"
+            effective_summary = "visual reference" if effective_reference_type == REFERENCE_TYPE_IMG else "text reference"
+        if reference_prefix_label == "GRAPH":
+            ref_prefix = f"* REF GRAPH: {effective_summary}"
+        else:
+            ref_prefix = f"* REF {effective_reference_type}: {effective_summary}"
         out = f"{ref_prefix}\n{out}"
 
     final_text = _extract_final_answer_text(out)
@@ -1564,7 +1653,7 @@ def toggle_star_worker(client: OpenAI) -> None:
     if bool(meta.get("reference_active", False)):
         _clear_reference(meta)
         save_starred_meta(meta)
-        set_reference_active(False)
+        _set_reference_indicator_from_meta(meta)
         set_status("REF CLEARED")
         return
 
@@ -1681,7 +1770,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "reference_summary": summary,
                 })
                 save_starred_meta(meta)
-                set_reference_active(True)
+                _set_reference_indicator_from_meta(meta)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
                 set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
             elif label == "VISUAL":
@@ -1741,7 +1830,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "reference_summary": summary,
                 })
                 save_starred_meta(meta)
-                set_reference_active(True)
+                _set_reference_indicator_from_meta(meta)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
                 set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary}")
             else:
@@ -1772,8 +1861,63 @@ def toggle_star_worker(client: OpenAI) -> None:
             "reference_summary": summary,
         })
         save_starred_meta(meta)
-        set_reference_active(True)
+        _set_reference_indicator_from_meta(meta)
         log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
         set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
     else:
         set_status("REF assign failed: no image/text in clipboard")
+
+
+def toggle_graph_reference_worker(client: OpenAI) -> None:
+    cfg = get_config()
+    model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
+    reference_helper_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
+    ref_model = reference_helper_model if _is_gpt5_family_model(model_name) else model_name
+    meta = load_starred_meta()
+
+    # Strict toggle behavior: active -> clear only.
+    if bool(meta.get("graph_reference_active", False)):
+        _clear_graph_reference(meta)
+        save_starred_meta(meta)
+        _set_reference_indicator_from_meta(meta)
+        set_status("GRAPH REF CLEARED")
+        return
+
+    if not _can_assign_graph_reference(meta):
+        return
+
+    raw_clip, err = safe_clipboard_read()
+    if err is not None:
+        log_telemetry("graph_ref_clipboard_read_error", {"error": str(err)})
+
+    if not isinstance(raw_clip, Image.Image):
+        set_status("GRAPH REF assign failed: image required on clipboard")
+        return
+
+    try:
+        img = normalize_image_for_api(raw_clip, cfg)
+        img_b64 = image_to_base64_png(img)
+        img_dir = _starred_base_dir()
+        img_path = os.path.join(img_dir, GRAPH_REF_IMG_FILE)
+        img.save(img_path, format="PNG")
+
+        summary = _summarize_visual_reference(
+            client=client,
+            model_name=ref_model,
+            img_b64=img_b64,
+            timeout=int(cfg.get("classify_timeout", 8)),
+        )
+        summary = summary or "graph reference"
+
+        meta.update({
+            "graph_reference_active": True,
+            "graph_image_path": img_path,
+            "graph_reference_summary": summary,
+        })
+        save_starred_meta(meta)
+        _set_reference_indicator_from_meta(meta)
+        log_telemetry("graph_ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
+        set_status(f"* REF GRAPH: {summary}")
+    except Exception as e:
+        log_telemetry("graph_ref_image_error", {"error": str(e)})
+        set_status(f"GRAPH REF failed: {e}")

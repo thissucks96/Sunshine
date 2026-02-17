@@ -127,6 +127,122 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertTrue(writes[-1].startswith("4\n"))
         self.assertTrue(writes[-1].endswith("* REF IMG: sample visual ref"))
 
+    def test_graph_ref_prefix_is_used_for_graph_like_input_when_graph_ref_active(self):
+        writes = []
+
+        def _fake_clipboard_write(text: str, attempts: int = 4, delay_sec: float = 0.08) -> bool:
+            writes.append(text)
+            return True
+
+        def _fake_responses_text(**_kwargs):
+            return "Prompt\nWORK:\nstep\nFINAL ANSWER: [-2, 4)"
+
+        with tempfile.TemporaryDirectory() as td:
+            graph_image_path = f"{td}/graph_ref.png"
+            text_path = f"{td}/ref.txt"
+            Image.new("RGB", (12, 12), "white").save(graph_image_path, format="PNG")
+            with open(text_path, "w", encoding="utf-8") as f:
+                f.write("worksheet context")
+
+            cfg = {
+                "retries": 0,
+                "request_timeout": 20,
+                "model": "gpt-4o-mini",
+                "temperature": 0.0,
+                "max_output_tokens": 2200,
+                "clipboard_history_settle_sec": 0.0,
+                "notify_on_complete": False,
+                "max_image_side": 4096,
+                "max_image_pixels": 16_000_000,
+            }
+            meta = {
+                "reference_active": True,
+                "reference_type": llm_pipeline.REFERENCE_TYPE_TEXT,
+                "text_path": text_path,
+                "image_path": "",
+                "reference_summary": "base worksheet context",
+                "graph_reference_active": True,
+                "graph_image_path": graph_image_path,
+                "graph_reference_summary": "graph panel context",
+            }
+
+            with patch.object(llm_pipeline, "get_config", return_value=cfg), patch.object(
+                llm_pipeline, "load_starred_meta", return_value=meta
+            ), patch.object(llm_pipeline, "_responses_text", side_effect=_fake_responses_text), patch.object(
+                llm_pipeline, "_clipboard_write_retry", side_effect=_fake_clipboard_write
+            ), patch.object(
+                llm_pipeline, "mark_prompt_success", return_value=None
+            ), patch.object(
+                llm_pipeline, "set_status", return_value=None
+            ), patch.object(
+                llm_pipeline, "set_reference_active", return_value=None
+            ), patch.object(
+                llm_pipeline.time, "sleep", return_value=None
+            ):
+                llm_pipeline.solve_pipeline(client=object(), input_obj="Find the domain and range.")
+
+        self.assertGreaterEqual(len(writes), 2)
+        self.assertTrue(writes[0].startswith("* REF GRAPH: graph panel context\n"))
+        self.assertTrue(writes[-1].endswith("* REF GRAPH: graph panel context"))
+
+    def test_non_graph_input_keeps_regular_ref_even_when_graph_ref_is_active(self):
+        writes = []
+
+        def _fake_clipboard_write(text: str, attempts: int = 4, delay_sec: float = 0.08) -> bool:
+            writes.append(text)
+            return True
+
+        def _fake_responses_text(**_kwargs):
+            return "Prompt\nWORK:\nstep\nFINAL ANSWER: 3"
+
+        with tempfile.TemporaryDirectory() as td:
+            graph_image_path = f"{td}/graph_ref.png"
+            text_path = f"{td}/ref.txt"
+            Image.new("RGB", (12, 12), "white").save(graph_image_path, format="PNG")
+            with open(text_path, "w", encoding="utf-8") as f:
+                f.write("worksheet context")
+
+            cfg = {
+                "retries": 0,
+                "request_timeout": 20,
+                "model": "gpt-4o-mini",
+                "temperature": 0.0,
+                "max_output_tokens": 2200,
+                "clipboard_history_settle_sec": 0.0,
+                "notify_on_complete": False,
+                "max_image_side": 4096,
+                "max_image_pixels": 16_000_000,
+            }
+            meta = {
+                "reference_active": True,
+                "reference_type": llm_pipeline.REFERENCE_TYPE_TEXT,
+                "text_path": text_path,
+                "image_path": "",
+                "reference_summary": "base worksheet context",
+                "graph_reference_active": True,
+                "graph_image_path": graph_image_path,
+                "graph_reference_summary": "graph panel context",
+            }
+
+            with patch.object(llm_pipeline, "get_config", return_value=cfg), patch.object(
+                llm_pipeline, "load_starred_meta", return_value=meta
+            ), patch.object(llm_pipeline, "_responses_text", side_effect=_fake_responses_text), patch.object(
+                llm_pipeline, "_clipboard_write_retry", side_effect=_fake_clipboard_write
+            ), patch.object(
+                llm_pipeline, "mark_prompt_success", return_value=None
+            ), patch.object(
+                llm_pipeline, "set_status", return_value=None
+            ), patch.object(
+                llm_pipeline, "set_reference_active", return_value=None
+            ), patch.object(
+                llm_pipeline.time, "sleep", return_value=None
+            ):
+                llm_pipeline.solve_pipeline(client=object(), input_obj="Solve 2x + 1 = 7.")
+
+        self.assertGreaterEqual(len(writes), 2)
+        self.assertTrue(writes[0].startswith("* REF TEXT: base worksheet context\n"))
+        self.assertTrue(writes[-1].endswith("* REF TEXT: base worksheet context"))
+
     def test_status_mirrors_structured_clipboard_payload(self):
         unique_message = "status mirror unit test"
         fake_icon = _FakeNotifyIcon()

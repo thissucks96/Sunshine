@@ -1,3 +1,10 @@
+## 2026-02-17 — Add Dedicated Graph-Only Reference Slot
+
+- Runtime behavior change: added a separate graph reference slot (`graph_reference_active`, `graph_image_path`, `graph_reference_summary`) in STAR metadata.
+- New graph-reference toggle path added (hotkey/tray) to set or clear an image-only GRAPH REF independently of the existing REF.
+- Solve routing now prefers GRAPH REF for graph-like inputs (image input or graph/domain-range cues) and keeps existing REF routing for non-graph inputs.
+- Output headers (`WORK:` / `FINAL ANSWER:`), normalization pipeline, retry loop, and clipboard write flow remain unchanged.
+
 ## 2026-02-16 — Document External AHK Hotkey Conflict With Solve Trigger
 
 - Operational finding: solve hotkey (`ctrl+shift+x`) can fail when an AutoHotkey v1 script is running with global keyboard interception/remaps.
