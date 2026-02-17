@@ -1,0 +1,1286 @@
+{
+  "generated_at": "20260216_215522",
+  "scope": "exclude dark mode filenames",
+  "summary": {
+    "Easy": {
+      "passed": 10,
+      "total": 10,
+      "hit_rate_pct": 100.0
+    },
+    "Medium": {
+      "passed": 14,
+      "total": 15,
+      "hit_rate_pct": 93.33
+    },
+    "Hard": {
+      "passed": 8,
+      "total": 8,
+      "hit_rate_pct": 100.0
+    },
+    "overall": {
+      "passed": 32,
+      "total": 33,
+      "hit_rate_pct": 96.97
+    }
+  },
+  "results": {
+    "Easy": [
+      [
+        "graph is present (2).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (18).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (19).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (20).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (21).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (24).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (25).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (26).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (27).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (9).png",
+        true,
+        "ok"
+      ]
+    ],
+    "Medium": [
+      [
+        "graph is present (7).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (8).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (10).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (11).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (12).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (13).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (14).png",
+        false,
+        "key_point_missing_(5,13)_got=['(x=5, y=unclear)']"
+      ],
+      [
+        "graph is present (15).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (16).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (17).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (22).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (23).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (28).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (3).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (5).png",
+        true,
+        "ok"
+      ]
+    ],
+    "Hard": [
+      [
+        "graph is present 0.png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (4).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (30).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (31).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (1).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (6).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present.png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (29).png",
+        true,
+        "ok"
+      ]
+    ]
+  },
+  "details": {
+    "graph is present (2).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-3",
+          "y": "1",
+          "marker": "open"
+        },
+        "right_endpoint": {
+          "x": "4",
+          "y": "5",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=-3, y=1)",
+          "(x=4, y=5)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.93
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-3, y=1, marker=open\n  RIGHT_ENDPOINT: x=4, y=5, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=-3, y=1); (x=4, y=5)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.93"
+    },
+    "graph is present (18).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "1",
+          "y": "2",
+          "marker": "closed"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=1, y=2)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.9
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=1, y=2, marker=closed\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=1, y=2)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.9"
+    },
+    "graph is present (19).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "1",
+          "y": "2",
+          "marker": "closed"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=1, y=2)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=1, y=2, marker=closed\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=1, y=2)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (20).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-4",
+          "y": "0",
+          "marker": "closed"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=-4, y=0)",
+          "(x=0, y=2)"
+        ],
+        "key_points": [
+          "(x=-4, y=0)",
+          "(x=0, y=2)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-4, y=0, marker=closed\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=-4, y=0); (x=0, y=2)\n  KEY_POINTS: (x=-4, y=0); (x=0, y=2)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (21).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-2",
+          "y": "-4",
+          "marker": "open"
+        },
+        "right_endpoint": {
+          "x": "3",
+          "y": "-4",
+          "marker": "open"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=-2, y=-4)",
+          "(x=3, y=-4)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.88
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-2, y=-4, marker=open\n  RIGHT_ENDPOINT: x=3, y=-4, marker=open\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=-2, y=-4); (x=3, y=-4)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.88"
+    },
+    "graph is present (24).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-4",
+          "y": "0",
+          "marker": "closed"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=-4, y=0)",
+          "(x=0, y=2)"
+        ],
+        "key_points": [
+          "(x=-4, y=0)",
+          "(x=0, y=2)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-4, y=0, marker=closed\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=-4, y=0); (x=0, y=2)\n  KEY_POINTS: (x=-4, y=0); (x=0, y=2)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.72"
+    },
+    "graph is present (25).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-1",
+          "y": "-6",
+          "marker": "open"
+        },
+        "right_endpoint": {
+          "x": "3",
+          "y": "6",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=1, y=0)",
+          "(x=0, y=-3)"
+        ],
+        "key_points": [
+          "(x=-1, y=-6)",
+          "(x=3, y=6)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-1, y=-6, marker=open\n  RIGHT_ENDPOINT: x=3, y=6, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=1, y=0); (x=0, y=-3)\n  KEY_POINTS: (x=-1, y=-6); (x=3, y=6)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (26).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-1",
+          "y": "-6",
+          "marker": "open"
+        },
+        "right_endpoint": {
+          "x": "3",
+          "y": "6",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=-1, y=-6)",
+          "(x=3, y=6)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-1, y=-6, marker=open\n  RIGHT_ENDPOINT: x=3, y=6, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=-1, y=-6); (x=3, y=6)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (27).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "-1",
+          "y": "-6",
+          "marker": "open"
+        },
+        "right_endpoint": {
+          "x": "3",
+          "y": "6",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=-1, y=-6)",
+          "(x=3, y=6)"
+        ],
+        "scale": {
+          "x_tick": "2",
+          "y_tick": "4"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=-1, y=-6, marker=open\n  RIGHT_ENDPOINT: x=3, y=6, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=-1, y=-6); (x=3, y=6)\n  SCALE: x_tick=2, y_tick=4\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (9).png": {
+      "tier": "Easy",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=0",
+          "y=0"
+        ],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=1, y=1)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=0; y=0\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=1, y=1)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.72"
+    },
+    "graph is present (7).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=-1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)",
+          "(x=0, y=0)"
+        ],
+        "key_points": [
+          "(x=-3, y=3)",
+          "(x=-2, y=4)",
+          "(x=-1.5, y=6)",
+          "(x=-0.5, y=-2)",
+          "(x=0, y=0)",
+          "(x=1, y=1)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=-1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0); (x=0, y=0)\n  KEY_POINTS: (x=-3, y=3); (x=-2, y=4); (x=-1.5, y=6); (x=-0.5, y=-2); (x=0, y=0); (x=1, y=1)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (8).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=-1"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=-1\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.72"
+    },
+    "graph is present (10).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "key_points": [
+          "(x=0, y=-4)",
+          "(x=2, y=0)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=2, y=0); (x=0, y=-4)\n  KEY_POINTS: (x=0, y=-4); (x=2, y=0)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (11).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "key_points": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=2, y=0); (x=0, y=-4)\n  KEY_POINTS: (x=2, y=0); (x=0, y=-4)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (12).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "key_points": [
+          "(x=0, y=-4)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.74
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=2, y=0); (x=0, y=-4)\n  KEY_POINTS: (x=0, y=-4)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.74"
+    },
+    "graph is present (13).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "key_points": [
+          "(x=2, y=0)",
+          "(x=0, y=-4)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.86
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=2, y=0); (x=0, y=-4)\n  KEY_POINTS: (x=2, y=0); (x=0, y=-4)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.86"
+    },
+    "graph is present (14).png": {
+      "tier": "Medium",
+      "ok": false,
+      "reason": "key_point_missing_(5,13)_got=['(x=5, y=unclear)']",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=unclear, y=0)",
+          "(x=0, y=unclear)"
+        ],
+        "key_points": [
+          "(x=5, y=unclear)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.55
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=unclear, y=0); (x=0, y=unclear)\n  KEY_POINTS: (x=5, y=unclear)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.55"
+    },
+    "graph is present (15).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=unclear, y=0)",
+          "(x=0, y=unclear)"
+        ],
+        "key_points": [
+          "(x=5, y=13)"
+        ],
+        "scale": {
+          "x_tick": "5",
+          "y_tick": "5"
+        },
+        "confidence": 0.62
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=unclear, y=0); (x=0, y=unclear)\n  KEY_POINTS: (x=5, y=13)\n  SCALE: x_tick=5, y_tick=5\n  CONFIDENCE: 0.62"
+    },
+    "graph is present (16).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "5",
+          "y": "13",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=5, y=13)"
+        ],
+        "scale": {
+          "x_tick": "5",
+          "y_tick": "5"
+        },
+        "confidence": 0.74
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=5, y=13, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=5, y=13)\n  SCALE: x_tick=5, y_tick=5\n  CONFIDENCE: 0.74"
+    },
+    "graph is present (17).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "5",
+          "y": "13",
+          "marker": "closed"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=2, y=0)",
+          "(x=0, y=-2)"
+        ],
+        "key_points": [
+          "(x=5, y=13)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.62
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=5, y=13, marker=closed\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=2, y=0); (x=0, y=-2)\n  KEY_POINTS: (x=5, y=13)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.62"
+    },
+    "graph is present (22).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=2",
+          "y=-1"
+        ],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [],
+        "scale": {
+          "x_tick": "2",
+          "y_tick": "2"
+        },
+        "confidence": 0.74
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=2; y=-1\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: none\n  SCALE: x_tick=2, y_tick=2\n  CONFIDENCE: 0.74"
+    },
+    "graph is present (23).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=2",
+          "y=-1"
+        ],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [],
+        "scale": {
+          "x_tick": "2",
+          "y_tick": "2"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=2; y=-1\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: none\n  SCALE: x_tick=2, y_tick=2\n  CONFIDENCE: 0.72"
+    },
+    "graph is present (28).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=2",
+          "y=-1"
+        ],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [],
+        "scale": {
+          "x_tick": "2",
+          "y_tick": "2"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=2; y=-1\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: none\n  SCALE: x_tick=2, y_tick=2\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (3).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "5",
+          "y_tick": "5"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=5, y_tick=5\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (5).png": {
+      "tier": "Medium",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=2",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.76
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=2; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.76"
+    },
+    "graph is present 0.png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)",
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0); (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.72"
+    },
+    "graph is present (4).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)",
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0); (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (30).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "5",
+          "y_tick": "5"
+        },
+        "confidence": 0.78
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=5, y_tick=5\n  CONFIDENCE: 0.78"
+    },
+    "graph is present (31).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.74
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.74"
+    },
+    "graph is present (1).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [
+          "(x=2, y=-2)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.62
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: none\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: (x=2, y=-2)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.62"
+    },
+    "graph is present (6).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=-1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.62
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=-1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: none\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.62"
+    },
+    "graph is present.png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=-1",
+          "y=2"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)",
+          "(x=0, y=0)"
+        ],
+        "key_points": [
+          "(x=-3, y=3)",
+          "(x=-2, y=4)",
+          "(x=-1.5, y=6)",
+          "(x=-0.5, y=-2)",
+          "(x=0, y=0)",
+          "(x=1, y=1)"
+        ],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.62
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=-1; y=2\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0); (x=0, y=0)\n  KEY_POINTS: (x=-3, y=3); (x=-2, y=4); (x=-1.5, y=6); (x=-0.5, y=-2); (x=0, y=0); (x=1, y=1)\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.62"
+    },
+    "graph is present (29).png": {
+      "tier": "Hard",
+      "ok": true,
+      "reason": "ok",
+      "parsed": {
+        "left_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "right_endpoint": {
+          "x": "unclear",
+          "y": "unclear",
+          "marker": "arrow"
+        },
+        "asymptotes": [
+          "x=-1",
+          "x=1",
+          "y=0"
+        ],
+        "discontinuities": [],
+        "intercepts": [
+          "(x=0, y=0)"
+        ],
+        "key_points": [],
+        "scale": {
+          "x_tick": "1.0",
+          "y_tick": "1.0"
+        },
+        "confidence": 0.72
+      },
+      "error": null,
+      "raw_graph_evidence": "GRAPH_EVIDENCE:\n  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n  ASYMPTOTES: x=-1; x=1; y=0\n  DISCONTINUITIES: none\n  INTERCEPTS: (x=0, y=0)\n  KEY_POINTS: none\n  SCALE: x_tick=1.0, y_tick=1.0\n  CONFIDENCE: 0.72"
+    }
+  }
+}

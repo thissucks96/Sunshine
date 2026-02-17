@@ -78,6 +78,10 @@
 - Current implementation status: REF-prime graph identifier function exists behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default OFF) with binary YES/NO routing.
 - Scout classifier status: REF-prime detection uses binary YES/NO with `gpt-5.2`; validation uses `tests/verify_classifier.py` and `tests/GRAPH_CHECKER/`.
 - Latest benchmark status: sequential ground-truth run (single-thread, no exclusions) on 103 images completed at 103/103 correct (100.00%).
+- Latest light-mode extraction benchmark status (dark-mode excluded, 33 tagged files):
+  - `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_215522.json`
+  - Result: 32/33 (96.97%)
+  - Current blocker: intermittent `KEY_POINTS` uncertainty on `graph is present (14).png` where `(x=5, y=13)` is not consistently emitted.
 - Extractor comparison status (`graph_only`, 38 images): `gpt-5.2` is the decisive winner vs `gpt-5-mini` and `gpt-4o`; next test phase is 5.2-only extraction quality scoring.
 - Runtime behavior contract: graph mode ON primes extraction directly; auto-detect path is flag-gated; extractor enforces strict schema with `unclear`/`none` tolerance for ambiguous visuals.
 - Prompt-hardening track (next): improve extractor prompt to force observation-first reading (scale-first, strict marker interpretation, explicit unknown on ambiguity) to reduce hallucinated coordinates/markers.

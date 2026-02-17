@@ -1,3 +1,23 @@
+## 2026-02-17 — Final Light-Mode Tiered Validation Rerun (33 Files, Dark-Mode Excluded)
+
+- Executed a fresh full extraction benchmark on tagged light-mode files only (Easy 10, Medium 15, Hard 8).
+- Artifacts:
+  - `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_215522.json`
+  - `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_215522.txt`
+- Result:
+  - Easy: `10/10` (`100.00%`)
+  - Medium: `14/15` (`93.33%`)
+  - Hard: `8/8` (`100.00%`)
+  - Overall: `32/33` (`96.97%`)
+- Single remaining miss:
+  - `graph is present (14).png` returned `KEY_POINTS` with unresolved y-value (`(x=5, y=unclear)`) in the benchmark run.
+- Additional probe:
+  - repeated isolated extraction for file `(14)` shows variable outputs across runs, including valid `(5,13)` and unresolved variants.
+- Runtime contract status:
+  - `WORK:` / `FINAL ANSWER:` format unchanged.
+  - Graph retry remains disabled.
+  - Clipboard/normalization behavior unchanged.
+
 ## 2026-02-17 — Precision Polish For Guide-Line Intersections (File 14 Fix)
 
 - Runtime prompt refinement in `llm_pipeline.py`:

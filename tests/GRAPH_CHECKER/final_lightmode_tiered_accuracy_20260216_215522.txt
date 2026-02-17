@@ -1,0 +1,10 @@
+Final Light-Mode Tiered Accuracy Report
+Easy: 10/10 = 100.00%
+Medium: 14/15 = 93.33%
+Hard: 8/8 = 100.00%
+Overall: 32/33 = 96.97%
+
+Easy failures: 0
+Medium failures: 1
+- graph is present (14).png: key_point_missing_(5,13)_got=['(x=5, y=unclear)']
+Hard failures: 0
