@@ -71,12 +71,12 @@
 ## Phase 2 (Near-Term)
 - Keep unified REF graph mode (`graph_mode` ON/OFF) stable in production.
 - Improve graph evidence extraction quality and confidence handling without changing solve output contract.
-- Introduce auto graph-identification incrementally, starting with REF-prime-only detection using a dedicated `graph_identifier_model` selector.
+- Introduce auto graph-identification incrementally, keeping REF-prime-only detection pinned to `gpt-5.2`.
 - Keep graph toggle in place until classifier behavior is validated and telemetry confirms stable precision/recall.
 - Use `tests/GRAPH_CHECKER/` as the baseline sample graph set for identifier validation runs.
 - Use `tests/GRAPH_CHECKER/graph_only/` as the positive-only subset (38 graph images) for targeted precision checks.
 - Current implementation status: REF-prime graph identifier function exists behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default OFF) with binary YES/NO routing.
-- Scout classifier status: REF-prime detection uses binary YES/NO with `gpt-4o-mini`; validation uses `tests/verify_classifier.py` and `tests/GRAPH_CHECKER/`.
+- Scout classifier status: REF-prime detection uses binary YES/NO with `gpt-5.2`; validation uses `tests/verify_classifier.py` and `tests/GRAPH_CHECKER/`.
 - Latest benchmark status: sequential ground-truth run (single-thread, no exclusions) on 103 images completed at 103/103 correct (100.00%).
 - Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.

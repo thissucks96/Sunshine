@@ -86,11 +86,10 @@
 **B. Retry Guard**
 - `llm_pipeline.py:481`: Internal retry for "unsupported parameter temperature".
 **C. Graph Identifier Selector**
-- Tray includes a dedicated `Graph Identifier Model` selector persisted in config (`graph_identifier_model`).
-- Current scout implementation is pinned to `gpt-4o-mini`; selector remains available for staged routing work.
+- Removed from runtime to avoid ghost model-routing paths.
 **D. REF-Prime Scout Classifier**
 - `detect_graph_presence(image_path, ...)` runs only in REF image priming flow.
-- Scout call is pinned to `gpt-4o-mini` and returns binary `YES/NO`.
+- Scout call is pinned to `gpt-5.2` and returns binary `YES/NO`.
 - `YES` routes to graph-evidence extraction; `NO` falls back to normal REF classification.
 - Validation harness: `tests/verify_classifier.py` supports sequential ground-truth mode (`max_workers=1`) with 429 exponential backoff and no exclusion scoring.
 - Latest benchmark: `tests/GRAPH_CHECKER` full set achieved 103/103 (100.00%) in sequential no-exclusion mode; positive-only subset is maintained at `tests/GRAPH_CHECKER/graph_only/` (38 images).

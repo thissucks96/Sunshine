@@ -1,3 +1,11 @@
+## 2026-02-17 — Pin All Graph Runtime Calls To gpt-5.2 (Remove Selector Ghost Code)
+
+- Runtime behavior change: graph presence detection (`detect_graph_presence`) is now pinned to `gpt-5.2` (same as graph evidence extraction).
+- Removed unused graph-identifier model selector wiring from tray/runtime (`Graph Identifier Model` menu path).
+- Removed legacy config key normalization for `graph_identifier_model`; legacy key is now cleaned from config on normalize.
+- Goal: eliminate ghost model-selection paths and enforce a single graph-model contract for production graph flows.
+- Core solve/output contract unchanged: `WORK:` / `FINAL ANSWER:` headers, normalization, retry policy (graph retry disabled), and clipboard flow remain unchanged.
+
 ## 2026-02-17 — Ground-Truth Classifier Validation (Sequential, No Exclusions)
 
 - Updated `tests/verify_classifier.py` to support ground-truth validation mode:

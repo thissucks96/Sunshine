@@ -134,10 +134,13 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
 GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
 
 GRAPH_IDENTIFIER_PROMPT = (
-    "Does this image contain a coordinate-plane graph used for math analysis?\n"
-    "Return ONLY one token: YES or NO."
+    "Identify if a coordinate graph/plot is present. If there is a grid with axes and a curve/line, "
+    "it is a YES, even if other elements like tables or text are present.\n"
+    "Return JSON only with exact schema:\n"
+    '{"is_graph": "YES/NO", "reasoning": "Concise explanation of visual cues found or missing"}'
 )
-GRAPH_IDENTIFIER_MODEL = "gpt-4o-mini"
+# Graph presence detection is pinned to the strongest graph vision model.
+GRAPH_IDENTIFIER_MODEL = "gpt-5.2"
 
 FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "MANDATORY VISUAL EXTRACTION STEP:\n"
@@ -446,14 +449,14 @@ def detect_graph_presence(
     image_path: str,
     client: OpenAI,
     timeout: int,
-) -> str:
+) -> Dict[str, str]:
     try:
         with Image.open(str(image_path or "")) as im:
             probe_img = normalize_image_for_api(im.convert("RGB"), get_config())
         img_b64 = image_to_base64_png(probe_img)
     except Exception as e:
         log_telemetry("graph_identifier_error", {"stage": "image_load", "error": str(e)})
-        return "NO"
+        return {"is_graph": "NO", "reasoning": f"image_load_error: {e}"}
 
     payload = [
         {"role": "system", "content": [{"type": "input_text", "text": GRAPH_IDENTIFIER_PROMPT}]},
@@ -466,19 +469,38 @@ def detect_graph_presence(
             input_payload=payload,
             timeout=max(6, int(timeout)),
             temperature=0.0,
-            max_output_tokens=16,
+            max_output_tokens=160,
             flow_name="graph_identifier",
         ).strip()
     except Exception as e:
         log_telemetry("graph_identifier_error", {"stage": "api", "model": GRAPH_IDENTIFIER_MODEL, "error": str(e)})
-        return "NO"
-    normalized = " ".join(str(raw or "").upper().split())
-    if re.search(r"\bYES\b", normalized):
-        return "YES"
-    if re.search(r"\bNO\b", normalized):
-        return "NO"
-    log_telemetry("graph_identifier_error", {"stage": "parse", "raw": raw[:120]})
-    return "NO"
+        return {"is_graph": "NO", "reasoning": f"api_error: {e}"}
+
+    parsed: Dict[str, Any] = {}
+    raw_text = str(raw or "").strip()
+    try:
+        parsed = json.loads(raw_text)
+    except Exception:
+        # Best-effort recovery if model wraps JSON with prose/code fences.
+        m = re.search(r"\{[\s\S]*\}", raw_text)
+        if m:
+            try:
+                parsed = json.loads(m.group(0))
+            except Exception:
+                parsed = {}
+
+    label_raw = str(parsed.get("is_graph", "") or "").strip().upper()
+    reasoning = str(parsed.get("reasoning", "") or "").strip()
+    if label_raw not in {"YES", "NO"}:
+        normalized = " ".join(raw_text.upper().split())
+        label_raw = "YES" if re.search(r"\bYES\b", normalized) else "NO"
+        if not reasoning:
+            reasoning = "fallback_parse_used"
+
+    if not reasoning:
+        reasoning = "no_reasoning_provided"
+
+    return {"is_graph": label_raw, "reasoning": reasoning}
 
 
 def _prime_graph_reference_with_evidence(
@@ -1844,13 +1866,16 @@ def toggle_star_worker(client: OpenAI) -> None:
                             os.remove(probe_path)
                     except Exception:
                         pass
-                detection_hit = str(detection or "").strip().upper() == "YES"
+                detection_label = str(detection.get("is_graph", "NO") or "NO").strip().upper()
+                detection_reason = str(detection.get("reasoning", "") or "")
+                detection_hit = detection_label == "YES"
                 log_telemetry(
                     "graph_identifier_decision",
                     {
                         "enabled": True,
                         "model": GRAPH_IDENTIFIER_MODEL,
-                        "result": str(detection or "").strip().upper(),
+                        "result": detection_label,
+                        "reasoning": detection_reason,
                         "decision": "graph_extract" if detection_hit else "normal_ref",
                     },
                 )

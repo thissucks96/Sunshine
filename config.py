@@ -27,8 +27,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "ocr_timeout": 12,
     # Stable vision model for REF visual-summary fallback.
     "reference_summary_model": "gpt-4o-mini",
-    # Reserved selector for upcoming graph-identifier classifier logic.
-    "graph_identifier_model": "gpt-4o-mini",
 
     # behavior
     "debug": False,
@@ -177,18 +175,9 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     if normalized.get("reference_summary_model") != reference_summary_model:
         normalized["reference_summary_model"] = reference_summary_model
 
-    graph_identifier_model = str(
-        normalized.get("graph_identifier_model", DEFAULT_CONFIG["graph_identifier_model"]) or ""
-    ).strip()
-    if graph_identifier_model.lower() in REMOVED_MODELS:
-        graph_identifier_model = REMOVED_MODEL_FALLBACK
-    if not graph_identifier_model:
-        graph_identifier_model = str(DEFAULT_CONFIG["graph_identifier_model"])
-    if graph_identifier_model not in available_models:
-        available_models.append(graph_identifier_model)
-        normalized["available_models"] = available_models
-    if normalized.get("graph_identifier_model") != graph_identifier_model:
-        normalized["graph_identifier_model"] = graph_identifier_model
+    # Legacy key cleanup: graph identifier model is now hard-pinned in runtime.
+    if "graph_identifier_model" in normalized:
+        normalized.pop("graph_identifier_model", None)
 
     graph_evidence_parsing = bool(
         normalized.get("ENABLE_GRAPH_EVIDENCE_PARSING", DEFAULT_CONFIG["ENABLE_GRAPH_EVIDENCE_PARSING"])

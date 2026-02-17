@@ -153,12 +153,6 @@ def _active_model_name(cfg: Optional[Dict[str, object]] = None) -> str:
     return str(c.get("model", MODEL) or MODEL).strip() or MODEL
 
 
-def _active_graph_identifier_model(cfg: Optional[Dict[str, object]] = None) -> str:
-    c = cfg or get_config()
-    fallback = str(c.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
-    return str(c.get("graph_identifier_model", fallback) or fallback).strip() or fallback
-
-
 def _verify_model_clipboard(model_name: str) -> bool:
     expected = f"MODEL ACTIVE: {model_name}"
     try:
@@ -655,30 +649,6 @@ def _on_tray_select_model(icon, _item, model_name: str):
     _set_model_from_ui(icon, model_name, source="tray")
 
 
-def _on_tray_select_graph_identifier_model(icon, _item, model_name: str):
-    cfg = get_config()
-    models = _normalize_available_models(cfg)
-    target_model = str(model_name or "").strip()
-    if not target_model:
-        set_status("GRAPH IDENTIFIER MODEL CHANGE FAILED: empty model")
-        return
-    if target_model not in models:
-        set_status(f"GRAPH IDENTIFIER MODEL CHANGE FAILED: unknown model '{target_model}'")
-        return
-
-    old_model = _active_graph_identifier_model(cfg)
-    updated = _persist_config_changes({"graph_identifier_model": target_model}, source="tray_graph_identifier_model")
-    if updated is None:
-        set_status("GRAPH IDENTIFIER MODEL CHANGE FAILED: unable to persist config")
-        return
-
-    log_telemetry("graph_identifier_model_changed", {"old": old_model, "new": target_model, "source": "tray"})
-    if old_model != target_model:
-        set_status(f"GRAPH IDENTIFIER MODEL: {old_model} -> {target_model}")
-    if _TRAY_ICON is not None:
-        _refresh_tray_menu(_TRAY_ICON)
-
-
 def _on_tray_refresh_model_list(icon, _item):
     cfg = reload_config()
     model_name = _active_model_name(cfg)
@@ -693,10 +663,6 @@ def _on_tray_auto_model_placeholder(_icon, _item):
 
 def _is_model_checked(model_name: str) -> bool:
     return _active_model_name() == str(model_name)
-
-
-def _is_graph_identifier_model_checked(model_name: str) -> bool:
-    return _active_graph_identifier_model() == str(model_name)
 
 
 def _is_ref_active_session() -> bool:
@@ -722,13 +688,6 @@ def _make_model_select_action(model_name: str):
     return _action
 
 
-def _make_graph_identifier_model_select_action(model_name: str):
-    def _action(icon, menu_item):
-        _on_tray_select_graph_identifier_model(icon, menu_item, model_name)
-
-    return _action
-
-
 def _build_tray_menu():
     cfg = get_config()
     models = _normalize_available_models(cfg)
@@ -749,22 +708,11 @@ def _build_tray_menu():
     ])
     model_items.append(item("Refresh Model List", _on_tray_refresh_model_list))
 
-    graph_identifier_items = [
-        item(
-            m,
-            _make_graph_identifier_model_select_action(m),
-            checked=lambda *_args, model_name=m: _is_graph_identifier_model_checked(model_name),
-            radio=True,
-        )
-        for m in models
-    ]
-
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
         item(ref_label, _on_tray_star_toggle, default=True),
         item(graph_mode_label, _on_tray_graph_mode_toggle),
         item("Model", pystray.Menu(*model_items)),
-        item("Graph Identifier Model", pystray.Menu(*graph_identifier_items)),
         # No Quit menu item: close is handled by right-click tray policy.
     )
 

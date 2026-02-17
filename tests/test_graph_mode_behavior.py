@@ -139,7 +139,7 @@ class GraphModeBehaviorTests(unittest.TestCase):
         ), patch.object(
             llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
         ), patch.object(
-            llm_pipeline, "detect_graph_presence", return_value="YES"
+            llm_pipeline, "detect_graph_presence", return_value={"is_graph": "YES", "reasoning": "axes+curve"}
         ) as mock_detect, patch.object(
             llm_pipeline, "_summarize_visual_reference", return_value="graph panel reference"
         ), patch.object(
@@ -174,7 +174,7 @@ class GraphModeBehaviorTests(unittest.TestCase):
         ), patch.object(
             llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
         ), patch.object(
-            llm_pipeline, "detect_graph_presence", return_value="NO"
+            llm_pipeline, "detect_graph_presence", return_value={"is_graph": "NO", "reasoning": "no_axes"}
         ), patch.object(
             llm_pipeline, "_responses_text", return_value="VISUAL"
         ), patch.object(
@@ -199,15 +199,16 @@ class GraphModeBehaviorTests(unittest.TestCase):
             with patch.object(
                 llm_pipeline, "get_config", return_value=cfg
             ), patch.object(
-                llm_pipeline, "_responses_text", return_value="YES"
+                llm_pipeline, "_responses_text", return_value='{"is_graph":"YES","reasoning":"grid and axes"}'
             ) as mock_resp:
                 result = llm_pipeline.detect_graph_presence(
                     image_path=img_path,
                     client=object(),
                     timeout=8,
                 )
-        self.assertEqual(result, "YES")
-        self.assertEqual(mock_resp.call_args.kwargs.get("model_name"), "gpt-4o-mini")
+        self.assertEqual(result.get("is_graph"), "YES")
+        self.assertIn("grid", result.get("reasoning", ""))
+        self.assertEqual(mock_resp.call_args.kwargs.get("model_name"), "gpt-5.2")
 
 
 if __name__ == "__main__":

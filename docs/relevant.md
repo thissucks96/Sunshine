@@ -1,3 +1,16 @@
+## 2026-02-17 — Graph Runtime Model Contract Simplified
+
+Description:
+Graph runtime calls are now explicitly pinned to `gpt-5.2` only.
+
+Changes:
+- `detect_graph_presence(...)` model pin moved to `gpt-5.2`.
+- Tray/config `Graph Identifier Model` selector path removed as unused ghost code.
+- Legacy `graph_identifier_model` config key is cleaned during normalization.
+
+Status:
+Implemented and validated with targeted tests.
+
 ## 2026-02-17 — Graph Presence Classifier Ground-Truth Pass (Complete)
 
 Description:

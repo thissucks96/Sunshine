@@ -15,7 +15,7 @@ class ConfigModelMigrationTests(unittest.TestCase):
         self.assertNotIn("gpt-5", normalized.get("available_models", []))
         self.assertIn("gpt-5.2", normalized.get("available_models", []))
 
-    def test_graph_identifier_model_is_normalized_and_kept_selectable(self):
+    def test_legacy_graph_identifier_model_key_is_removed(self):
         normalized = config._normalize_config(  # pylint: disable=protected-access
             {
                 "model": "gpt-4o-mini",
@@ -23,8 +23,8 @@ class ConfigModelMigrationTests(unittest.TestCase):
                 "graph_identifier_model": "gpt-5",
             }
         )
-        self.assertEqual(normalized.get("graph_identifier_model"), "gpt-5.2")
-        self.assertIn("gpt-5.2", normalized.get("available_models", []))
+        self.assertNotIn("graph_identifier_model", normalized)
+        self.assertIn("gpt-4o-mini", normalized.get("available_models", []))
 
 
 if __name__ == "__main__":
