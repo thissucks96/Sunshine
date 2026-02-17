@@ -810,6 +810,24 @@ def detect_graph_presence(
     return {"is_graph": label_raw, "reasoning": reasoning}
 
 
+def has_graph(image_path: str, client: Optional[OpenAI] = None, timeout: int = 8) -> bool:
+    owns_client = client is None
+    probe_client = client or OpenAI()
+    try:
+        result = detect_graph_presence(
+            image_path=image_path,
+            client=probe_client,
+            timeout=max(3, int(timeout)),
+        )
+        return str(result.get("is_graph", "NO") or "NO").strip().upper() == "YES"
+    finally:
+        if owns_client:
+            try:
+                probe_client.close()
+            except Exception:
+                pass
+
+
 def _prime_graph_reference_with_evidence(
     client: OpenAI,
     cfg: Dict[str, Any],

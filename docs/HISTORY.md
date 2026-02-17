@@ -1,3 +1,20 @@
+## 2026-02-17 — Final System Acceptance Run (Full Pipeline)
+
+- Added end-to-end validation harness:
+  - `tests/validate_full_pipeline.py`
+  - Flow per case: `has_graph` detector gate -> `extract_graph_evidence` -> strict tier verification.
+- Added detector helper in runtime module:
+  - `llm_pipeline.has_graph(image_path, client, timeout)` as a thin wrapper over `detect_graph_presence`.
+- Acceptance artifacts:
+  - `tests/GRAPH_CHECKER/system_acceptance_light_20260216.txt`
+  - `tests/GRAPH_CHECKER/system_acceptance_dark_20260216.txt`
+- Results:
+  - Light-mode production set (dark-mode excluded): `33/33` (`100.00%`)
+  - Dark-mode stress set only: `2/5` (`40.00%`)
+- Notes:
+  - Light-mode target met at 100%.
+  - Dark-mode remains stress/best-effort and non-blocking for production acceptance.
+
 ## 2026-02-17 — Guide-Line Override Prompt + 33/33 Light-Mode Victory Run
 
 - Runtime prompt update in `llm_pipeline.py`:

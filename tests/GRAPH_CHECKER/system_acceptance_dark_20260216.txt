@@ -1,0 +1,13 @@
+System Acceptance — Dark Mode Stress Set
+Total: 2/5 = 40.00%
+
+[Hard] graph is present dark mode (1).png | PASS | ok
+[Hard] graph is present dark mode (2).png | FAIL | dark_key_point_missing_(2,-2)_got=['(x=2, y=-1)']
+[Hard] graph is present dark mode (3).png | FAIL | dark_key_point_missing_(2,-2)_got=['(x=0, y=-5)']
+[Hard] graph is present dark mode (4).png | PASS | ok
+[Hard] graph is present dark mode (5).png | FAIL | dark_key_point_missing_(2,-2)_got=['(x=2, y=-3)']
+
+Failure Summary:
+- [Hard] graph is present dark mode (2).png: dark_key_point_missing_(2,-2)_got=['(x=2, y=-1)']
+- [Hard] graph is present dark mode (3).png: dark_key_point_missing_(2,-2)_got=['(x=0, y=-5)']
+- [Hard] graph is present dark mode (5).png: dark_key_point_missing_(2,-2)_got=['(x=2, y=-3)']

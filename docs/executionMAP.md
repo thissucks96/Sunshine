@@ -173,6 +173,9 @@
   - Medium 8-file rerun after guide-line precision polish: `tests/GRAPH_CHECKER/medium_tier_8file_accuracy_20260216_214053.json` (8/8, 100.00%).
   - Final light-mode 33-file rerun (dark-mode excluded): `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_215522.json` (32/33, 96.97%; single remaining miss on `(14)` with intermittent `KEY_POINTS` y-value uncertainty).
   - Guide-line override rerun (dark-mode excluded): `tests/GRAPH_CHECKER/final_lightmode_tiered_accuracy_20260216_221723.json` (33/33, 100.00%).
+  - Full-pipeline acceptance harness:
+    - light: `tests/GRAPH_CHECKER/system_acceptance_light_20260216.txt` (33/33, 100.00%)
+    - dark stress: `tests/GRAPH_CHECKER/system_acceptance_dark_20260216.txt` (2/5, 40.00%)
 - Limitation contract:
   - Dark/low-contrast graph extraction is best-effort only and may exhibit coordinate drift.
   - See `docs/LIMITATIONS.md` for explicit support boundary.

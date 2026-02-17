@@ -1,0 +1,39 @@
+System Acceptance — Light Mode Production Set
+Total: 33/33 = 100.00%
+
+[Easy] graph is present (18).png | PASS | ok
+[Easy] graph is present (19).png | PASS | ok
+[Easy] graph is present (2).png | PASS | ok
+[Easy] graph is present (20).png | PASS | ok
+[Easy] graph is present (21).png | PASS | ok
+[Easy] graph is present (24).png | PASS | ok
+[Easy] graph is present (25).png | PASS | ok
+[Easy] graph is present (26).png | PASS | ok
+[Easy] graph is present (27).png | PASS | ok
+[Easy] graph is present (9).png | PASS | ok
+[Medium] graph is present (10).png | PASS | ok
+[Medium] graph is present (11).png | PASS | ok
+[Medium] graph is present (12).png | PASS | ok
+[Medium] graph is present (13).png | PASS | ok
+[Medium] graph is present (14).png | PASS | ok
+[Medium] graph is present (15).png | PASS | ok
+[Medium] graph is present (16).png | PASS | ok
+[Medium] graph is present (17).png | PASS | ok
+[Medium] graph is present (22).png | PASS | ok
+[Medium] graph is present (23).png | PASS | ok
+[Medium] graph is present (28).png | PASS | ok
+[Medium] graph is present (3).png | PASS | ok
+[Medium] graph is present (5).png | PASS | ok
+[Medium] graph is present (7).png | PASS | ok
+[Medium] graph is present (8).png | PASS | ok
+[Hard] graph is present (1).png | PASS | ok
+[Hard] graph is present (29).png | PASS | ok
+[Hard] graph is present (30).png | PASS | ok
+[Hard] graph is present (31).png | PASS | ok
+[Hard] graph is present (4).png | PASS | ok
+[Hard] graph is present (6).png | PASS | ok
+[Hard] graph is present 0.png | PASS | ok
+[Hard] graph is present.png | PASS | ok
+
+Failure Summary:
+- none
