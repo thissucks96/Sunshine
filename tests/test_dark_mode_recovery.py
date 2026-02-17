@@ -65,6 +65,21 @@ class DarkModeRecoveryTests(unittest.TestCase):
         self.assertIn("KEY_POINTS: (x=2, y=-2)", updated)
         self.assertNotIn("KEY_POINTS: none", updated)
 
+    def test_normalize_graph_evidence_key_points_snaps_near_integer(self):
+        text = (
+            "GRAPH_EVIDENCE:\n"
+            "  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n"
+            "  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow\n"
+            "  ASYMPTOTES: none\n"
+            "  DISCONTINUITIES: none\n"
+            "  INTERCEPTS: none\n"
+            "  KEY_POINTS: (x=5.0, y=12.8)\n"
+            "  SCALE: x_tick=1, y_tick=1\n"
+            "  CONFIDENCE: 0.70\n"
+        )
+        updated = llm_pipeline._normalize_graph_evidence_key_points(text, threshold=0.20)
+        self.assertIn("KEY_POINTS: (x=5, y=13)", updated)
+
 
 if __name__ == "__main__":
     unittest.main()

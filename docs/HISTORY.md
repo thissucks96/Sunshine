@@ -1,3 +1,16 @@
+## 2026-02-17 — Precision Polish For Guide-Line Intersections (File 14 Fix)
+
+- Runtime prompt refinement in `llm_pipeline.py`:
+  - `KEY_POINTS` guidance now explicitly treats geometric intersections of horizontal/vertical guide lines as valid coordinates even without a physical dot.
+  - Straight non-axis/non-curve lines are explicitly treated as measurement tools.
+  - Added exact-value rule: when guide lines align to labeled values, use the labeled coordinate exactly (no nearby-value approximation).
+- Runtime post-processor update in `llm_pipeline.py`:
+  - Added `_normalize_graph_evidence_key_points(...)` to snap near-integer `KEY_POINTS` coordinates (`threshold=0.20`) and upsert parser-valid normalized output.
+- Verification:
+  - Isolator on `graph is present (14).png` now returns `KEY_POINTS: (x=5, y=13)`.
+  - Medium 8-file benchmark artifact: `tests/GRAPH_CHECKER/medium_tier_8file_accuracy_20260216_214053.json`
+  - Result: `8/8` (`100.00%`).
+
 ## 2026-02-17 — Light-Mode Final Acceptance Run (Dark-Mode Excluded Scope)
 
 - Executed final tiered report on 33 files (full graph set excluding filenames containing `dark mode`).

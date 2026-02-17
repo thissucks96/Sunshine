@@ -125,6 +125,8 @@
   - dark-mode wording added for low-contrast handling via axis calibration and high-contrast curve focus
   - inline comment markers were removed from block examples to prevent response contamination
   - conditional dark-mode forensic override is applied during extraction when dark-mode detection is triggered
+  - guide-line intersection rule added: horizontal/vertical measurement lines define valid `KEY_POINTS` even without physical dots
+  - exact-value rule added for labeled measurement lines (for example x=5, y=13 => key point `(5,13)`)
 - Forensic hardening added:
   - observation-first visual witness rule (no algebraic inference from surrounding text)
   - scale-first calibration requirement before coordinate reporting
@@ -152,6 +154,9 @@
   - a second candidate pass requests `KEY_POINT_CANDIDATES` and reranks to a final `KEY_POINTS` coordinate
   - candidate coordinates are preprocessed with snap-to-integer threshold (`0.15`) before consensus/median rerank
   - final coordinate is upserted into the `GRAPH_EVIDENCE` block only if the updated block remains parser-valid
+- General key-point normalization:
+  - near-integer `KEY_POINTS` are normalized with a lightweight snap-to-grid post-processor (`threshold=0.20`)
+  - normalized key-points are upserted only when resulting `GRAPH_EVIDENCE` remains parser-valid
 
 **Solve-Time Usage**
 - Cached graph evidence is injected only when:
@@ -165,6 +170,7 @@
   - Tiered benchmark after polish: `tests/GRAPH_CHECKER/tiered_accuracy_20260216_205236.json` (Easy 100.00%, Medium 87.50%, Hard 60.00%).
   - Hard-tier-only run after conditional dark-mode recovery: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_210654.json` (Hard 70.00%).
   - Hard-tier rerun after integer snapping/grid-bias patch: `tests/GRAPH_CHECKER/hard_tier_accuracy_20260216_211155.json` (Hard 70.00%; dark-mode `(2)/(3)/(5)` drift remains).
+  - Medium 8-file rerun after guide-line precision polish: `tests/GRAPH_CHECKER/medium_tier_8file_accuracy_20260216_214053.json` (8/8, 100.00%).
 - Limitation contract:
   - Dark/low-contrast graph extraction is best-effort only and may exhibit coordinate drift.
   - See `docs/LIMITATIONS.md` for explicit support boundary.

@@ -115,6 +115,9 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
     "- Asymptotes: report visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even if no dashed guide is drawn; if far-left and far-right tails flatten toward the same y-level, record that horizontal asymptote; do not label x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
     "- Intercepts: for lines/curves crossing axes, populate INTERCEPTS with visible x- and y-axis crossings.\n"
     "- Key points: populate KEY_POINTS for clearly marked dots and query-driven reads (for example f(2), g(-2), h(x)=13) when coordinates are visually recoverable.\n"
+    "- Geometric intersections are valid KEY_POINTS even without a physical dot. If a horizontal guide line and a vertical guide line intersect on the function curve, record that coordinate (for example (5, 13)).\n"
+    "- Treat straight lines that are not the x/y axes and not the function curve as measurement tools that indicate specific x/y values.\n"
+    "- When measurement-tool lines align with labeled values, use those labeled values exactly (for example y=13 and x=5 => KEY_POINT (5, 13)); do not approximate to nearby integers.\n"
     "- Dark mode handling: for low-contrast graphs, prioritize high-contrast curve pixels and axis labels, calibrate minor-grid subdivisions from major labels, and avoid decorative overlay text; for query anchors like f(2), trace x=2 and report the nearest clearly supported grid value; if still ambiguous, use unclear.\n"
     "- INTERCEPTS and KEY_POINTS are optional, but include them whenever visually supported.\n"
     "Output exactly this block shape:\n"
@@ -142,6 +145,9 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
     "- Asymptotes: identify visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even without a dashed guide; if both tails flatten toward the same y-level, include that horizontal asymptote; do not classify x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
     "- Intercepts: when a line/curve visibly crosses axes, populate INTERCEPTS with axis crossing coordinates.\n"
     "- Key points: populate KEY_POINTS for marked dots and query-driven reads visible in the image (for example f(2), g(-2), h(x)=13).\n"
+    "- Geometric intersections are valid KEY_POINTS even without a physical dot. If a horizontal guide line and a vertical guide line intersect on the function curve, record that coordinate (for example (5, 13)).\n"
+    "- Treat straight lines that are not the x/y axes and not the function curve as measurement tools that indicate specific x/y values.\n"
+    "- When measurement-tool lines align with labeled values, use those labeled values exactly (for example y=13 and x=5 => KEY_POINT (5, 13)); do not approximate to nearby integers.\n"
     "- Dark mode handling: in low-contrast images, prioritize high-intensity curve/axis pixels, calibrate from major tick labels before reading points, and avoid overlay artifacts; for query anchors like f(2), trace x=2 and report the nearest clearly supported grid value.\n"
     "- INTERCEPTS and KEY_POINTS are optional, but include them whenever visually supported.\n"
     "If the image is not a graph on coordinate axes, return exactly: INVALID_GRAPH\n"
@@ -631,6 +637,44 @@ def _recover_dark_mode_key_point(
     return _rerank_dark_mode_key_point(candidates)
 
 
+def _normalize_graph_evidence_key_points(text: str, threshold: float = 0.20) -> str:
+    source = str(text or "")
+    parsed = _extract_graph_evidence_block(source)
+    if not parsed:
+        return source
+    key_points = list(parsed.get("key_points", []) or [])
+    if not key_points:
+        return source
+
+    normalized_points: List[str] = []
+    seen: set = set()
+    changed = False
+
+    for token in key_points:
+        pair = _parse_key_point_token(token)
+        if pair is None:
+            normalized = str(token).strip()
+        else:
+            sx = _snap_value(pair["x"], threshold=threshold)
+            sy = _snap_value(pair["y"], threshold=threshold)
+            normalized = f"(x={_format_coord_value(sx)}, y={_format_coord_value(sy)})"
+            if abs(sx - pair["x"]) > 1e-9 or abs(sy - pair["y"]) > 1e-9:
+                changed = True
+        key = normalized.lower().replace(" ", "")
+        if key and key not in seen:
+            seen.add(key)
+            normalized_points.append(normalized)
+
+    if not changed:
+        return source
+    if not normalized_points:
+        return source
+
+    updated = _upsert_graph_evidence_field_line(source, "KEY_POINTS", "; ".join(normalized_points))
+    reparsed = _extract_graph_evidence_block(updated)
+    return updated if reparsed is not None else source
+
+
 def extract_graph_evidence(
     image_path: str,
     client: OpenAI,
@@ -698,6 +742,7 @@ def extract_graph_evidence(
                     "source": "candidate_rerank",
                 },
             )
+    extracted = _normalize_graph_evidence_key_points(extracted, threshold=0.20)
     return extracted
 
 
