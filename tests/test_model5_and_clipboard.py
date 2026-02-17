@@ -289,6 +289,30 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertIn("FINAL ANSWER:\n(-2, ∞)", formatted)
         self.assertEqual("(-2, ∞)", llm_pipeline._extract_final_answer_text(formatted))
 
+    def test_compound_inequality_multiline_work_is_formatted_for_small_ui(self):
+        raw = (
+            "Solve each of the given compound inequalities. Enter your answers using interval notation.\n\n"
+            "-7x + 4 < 18 or -3x - 5 < -32\n"
+            "WORK:\n"
+            "-7x + 4 < 18\n"
+            "-7x < 14\n"
+            "x > -2\n\n"
+            "-3x - 5 < -32\n"
+            "-3x < -27\n"
+            "x > 9\n\n"
+            "Union: x > -2 (since x > 9 is subset of x > -2)\n"
+            "FINAL ANSWER:\n"
+            "(-2, ∞)"
+        )
+        formatted = llm_pipeline._maybe_format_compound_inequality_ui(raw)
+        self.assertIn("Solve -7x + 4 < 18:", formatted)
+        self.assertIn("Subtract 4 from both sides", formatted)
+        self.assertIn("Solve -3x - 5 < -32:", formatted)
+        self.assertIn("Add 5 to both sides", formatted)
+        self.assertIn("OR means union: x > -2 or x > 9 = x > -2", formatted)
+        self.assertIn("Question Context:", formatted)
+        self.assertEqual("(-2, ∞)", llm_pipeline._extract_final_answer_text(formatted))
+
     def test_cancelled_between_clipboard_writes_skips_final_write(self):
         writes = []
         statuses = []

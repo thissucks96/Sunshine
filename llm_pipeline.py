@@ -1313,6 +1313,12 @@ def _format_num_simple(value: Union[int, float]) -> str:
     return f"{v:.6f}".rstrip("0").rstrip(".")
 
 
+def _normalize_math_compare_text(expr: str) -> str:
+    s = _clean_expr_segment(expr).replace("≤", "<=").replace("≥", ">=")
+    s = re.sub(r"\s+", " ", s)
+    return s.strip().lower()
+
+
 def _clean_expr_segment(segment: str) -> str:
     s = str(segment or "").strip()
     s = s.rstrip(".")
@@ -1431,7 +1437,8 @@ def _maybe_format_compound_inequality_ui(out: str) -> str:
         return text
 
     pre_lines = [ln.strip() for ln in lines[:work_idx] if ln.strip()]
-    work_lines = [ln.strip() for ln in lines[work_idx + 1:final_idx] if ln.strip()]
+    work_lines_raw = [ln.rstrip() for ln in lines[work_idx + 1:final_idx]]
+    work_lines = [ln.strip() for ln in work_lines_raw if ln.strip()]
     final_inline = lines[final_idx].strip()[len("FINAL ANSWER:"):].strip()
     final_lines = []
     if final_inline:
@@ -1455,18 +1462,53 @@ def _maybe_format_compound_inequality_ui(out: str) -> str:
     if len(inequalities) < 2:
         return text
 
-    step_lines = [ln for ln in work_lines if "=>" in ln and "union" not in ln.lower()]
-    if len(step_lines) < len(inequalities):
-        return text
-
     formatted: List[str] = []
     solved_expressions: List[str] = []
+    transitions_by_ineq: List[List[str]] = []
+
+    step_lines = [ln for ln in work_lines if "=>" in ln and "union" not in ln.lower()]
+    if len(step_lines) >= len(inequalities):
+        for idx, _ineq in enumerate(inequalities):
+            raw_step = step_lines[idx]
+            transitions = [_clean_expr_segment(seg) for seg in raw_step.split("=>") if _clean_expr_segment(seg)]
+            if len(transitions) < 2:
+                return text
+            transitions_by_ineq.append(transitions)
+    else:
+        cursor = 0
+        normalized_work = [_normalize_math_compare_text(ln) for ln in work_lines]
+        for idx, ineq in enumerate(inequalities):
+            target = _normalize_math_compare_text(ineq)
+            start = -1
+            for j in range(cursor, len(normalized_work)):
+                if normalized_work[j] == target:
+                    start = j
+                    break
+            if start == -1:
+                return text
+
+            end = len(work_lines)
+            if idx + 1 < len(inequalities):
+                next_target = _normalize_math_compare_text(inequalities[idx + 1])
+                for j in range(start + 1, len(normalized_work)):
+                    if normalized_work[j] == next_target:
+                        end = j
+                        break
+
+            block_lines: List[str] = []
+            for ln in work_lines[start:end]:
+                if "union" in ln.lower():
+                    break
+                cleaned = _clean_expr_segment(ln)
+                if cleaned:
+                    block_lines.append(cleaned)
+            if len(block_lines) < 2:
+                return text
+            transitions_by_ineq.append(block_lines)
+            cursor = max(end, start + 1)
 
     for idx, ineq in enumerate(inequalities):
-        raw_step = step_lines[idx]
-        transitions = [_clean_expr_segment(seg) for seg in raw_step.split("=>") if _clean_expr_segment(seg)]
-        if len(transitions) < 2:
-            return text
+        transitions = transitions_by_ineq[idx]
         solved_expressions.append(transitions[-1])
 
         formatted.append(f"Solve {ineq}:")
