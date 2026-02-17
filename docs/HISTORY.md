@@ -1,3 +1,14 @@
+## 2026-02-17 — File 14 Forensic Diagnostic (Raw Reasoning Trace)
+
+- Added targeted diagnostic script: `tests/diagnose_file_14.py`.
+- Captured 3-run raw-text forensic trace artifact:
+  - `tests/GRAPH_CHECKER/diagnose_file_14_20260216_221349.txt`
+- Result:
+  - all 3 runs explicitly identified the guide lines as `x=5` and `y=13`
+  - all 3 runs reported intersection coordinate `(5, 13)` on the red curve
+- Interpretation:
+  - vision perception for file `(14)` is present; remaining benchmark miss is a structured extraction/format compliance issue, not a visibility limitation.
+
 ## 2026-02-17 — Final Light-Mode Tiered Validation Rerun (33 Files, Dark-Mode Excluded)
 
 - Executed a fresh full extraction benchmark on tagged light-mode files only (Easy 10, Medium 15, Hard 8).

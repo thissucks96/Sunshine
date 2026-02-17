@@ -1,0 +1,110 @@
+Target: tests\GRAPH_CHECKER\graph_only_tagged_v1\Medium\graph is present (14).png
+Model: gpt-5.2
+Runs: 3, Temperature: 0
+================================================================================
+RUN 1
+--------------------------------------------------------------------------------
+### Red curve (shape, start, end)
+- The red curve is a smooth, increasing **S-shaped** curve (cubic-like): it comes from the lower-left, bends upward through the middle, and then rises steeply to the upper-right.
+- **Where it starts/ends (within the visible window):**
+  - It **enters the frame from the bottom edge** on the left side (around \(x\approx -3\) to \(-4\)), at a \(y\) value below \(-10\).
+  - It then climbs, crosses near the middle region, and **exits the frame at the top edge** near \(x\approx 5\), where \(y\) is a bit above \(12\).
+  - So, in the shown image, it starts at the **bottom border** and ends at the **top border** (the curve continues beyond the visible region in both directions).
+
+### Brown straight lines (locations)
+There are two thick brown guide lines:
+1. A **vertical** brown line at **\(x=5\)** (it runs upward from the x-axis region to near the top of the plot).
+2. A **horizontal** brown line near the **top** of the plot at **\(y=13\)** (it runs across, and meets the vertical brown line at its right end).
+
+### Vertical brown line → x-axis value
+- Tracing the **vertical** brown line straight down to the x-axis, it touches exactly at:
+  - **\(x = 5\)**
+
+### Horizontal brown line → y-axis value
+- Tracing the **horizontal** brown line leftward to the y-axis, it corresponds to:
+  - **\(y = 13\)**
+  (It sits three minor grid steps above the labeled 10 line, i.e., at 13.)
+
+### Do the two brown lines intersect? Is that intersection on the red curve?
+- Yes, the vertical line \(x=5\) and the horizontal line \(y=13\) **intersect**.
+- Their intersection point is at the top-right corner where the two brown segments meet.
+- That intersection **lies on the red curve**: the red curve passes through that same point (it reaches the top around exactly where \(x=5\) and \(y=13\)).
+
+### Exact coordinate of the intersection
+\[
+(x,y) = (5,\ 13)
+\]
+================================================================================
+RUN 2
+--------------------------------------------------------------------------------
+### Red curve (shape, start, end)
+- The red curve is a smooth, increasing **S-shaped** curve (cubic-like): it comes from the lower-left, rises through the middle, and continues to the upper-right.
+- **Where it starts/ends (as shown in the image frame):**
+  - It **enters the visible window** from the **bottom edge** slightly left of the y-axis (around \(x\approx -3\) to \(-2\), \(y\approx -13\) at the bottom boundary).
+  - It **exits the visible window** at the **top edge** near \(x\approx 5\), where \(y\) is around \(13\) (top boundary).
+- It crosses the x-axis a bit to the right of the y-axis (around \(x\approx 2\)) and is already positive by the time it reaches \(x=5\).
+
+---
+
+### Brown straight lines (locations)
+There are two brown straight segments forming an “L”:
+1. **Vertical brown line:** at **\(x=5\)**, extending upward from the x-axis to near the top of the plot.
+2. **Horizontal brown line:** near the **top of the plot**, running left–right and meeting the vertical line at its right end.
+
+---
+
+### Vertical brown line traced to the x-axis
+- The vertical brown line is exactly on the grid line labeled **\(x=5\)**.
+- Tracing it down to the x-axis, it touches **exactly \(5\)**.
+
+**Answer: it touches \(x=5\).**
+
+---
+
+### Horizontal brown line traced left to the y-axis
+- The horizontal brown line sits on the grid line **three minor steps above the labeled 10**, i.e. at **\(y=13\)** (since the minor grid spacing is 1 unit and the top line is clearly above 10 by 3 units).
+- Tracing it left to the y-axis, it touches **exactly \(13\)**.
+
+**Answer: it touches \(y=13\).**
+
+---
+
+### Do the two brown lines intersect? Does that intersection lie on the red curve?
+- Yes, the brown lines intersect at the corner of the “L”: at \(x=5\) and \(y=13\).
+- The red curve passes through that same corner point (it visibly meets the vertical line right where the horizontal brown line meets it).
+
+**Answer: Yes, they intersect, and the intersection lies on the red curve.**
+
+---
+
+### Exact coordinate of the intersection
+\[
+(x,y) = (5,13)
+\]
+================================================================================
+RUN 3
+--------------------------------------------------------------------------------
+### Red curve (shape, start, end)
+- The red curve is a smooth, increasing “S-shaped” curve (cubic-like): it rises from the lower-left of the plot, flattens somewhat near the middle, then rises steeply toward the upper-right.
+- **Where it starts/enters the visible window:** it comes in from the **bottom edge** of the graph at approximately **x ≈ −3** (y is below the visible range there).
+- **Where it ends/exits the visible window:** it leaves through the **top edge** of the graph at approximately **x ≈ 5** (y is above the visible range there).
+- Along the way it crosses the y-axis slightly below 0 (around y ≈ −2) and crosses the x-axis a bit right of 0 (around x ≈ 1–2), then climbs rapidly.
+
+### Brown straight lines (locations)
+There are **two thick brown guide lines**:
+1. **A vertical brown line** located at **x = 5**, running upward from the x-axis to near the top boundary.
+2. **A horizontal brown line** near the top of the plot, running left–right across, at **y = 13**.
+
+### Vertical brown line to the x-axis: what number does it touch?
+- Tracing the **vertical** brown line down to the x-axis: it meets the x-axis exactly at **x = 5**.
+
+### Horizontal brown line to the y-axis: what number does it touch?
+- Tracing the **horizontal** brown line left to the y-axis: it meets the y-axis exactly at **y = 13**.
+
+### Do the two brown lines intersect? Is the intersection on the red curve?
+- Yes, they intersect at the point where **x = 5** and **y = 13**.
+- That intersection point also lies **on the red curve**: the red curve passes through the same top-right location where the vertical line at x=5 meets the horizontal line at y=13.
+
+### Exact intersection coordinate
+- **Intersection (x, y) = (5, 13)**
+================================================================================
