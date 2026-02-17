@@ -22,8 +22,8 @@ from config import (
 from llm_pipeline import (
     clear_reference_state,
     load_starred_meta,
+    set_graph_mode,
     solve_pipeline,
-    toggle_graph_reference_worker,
     toggle_star_worker,
 )
 from utils import (
@@ -51,7 +51,6 @@ _TRAY_ICON = None
 # Hotkeys are intentionally fixed in source; runtime editing is removed.
 RUN_HOTKEY = "ctrl+shift+x"
 REF_TOGGLE_HOTKEY = "ctrl+shift+s"
-GRAPH_REF_TOGGLE_HOTKEY = "ctrl+shift+g"
 QUIT_HOTKEY = "ctrl+shift+q"
 CYCLE_MODEL_HOTKEY = "ctrl+shift+m"
 
@@ -519,30 +518,6 @@ def star_worker() -> None:
         _star_lock.release()
 
 
-def graph_star_worker() -> None:
-    if not _star_lock.acquire(blocking=False):
-        return
-    client: Optional[OpenAI] = None
-    try:
-        cfg = get_config()
-        api_key = resolve_api_key(cfg)
-        if not api_key:
-            set_status("Missing API key; GRAPH REF unavailable.")
-            return
-        client = OpenAI(api_key=api_key, max_retries=0)
-        toggle_graph_reference_worker(client)
-    except Exception as e:
-        log_telemetry("graph_star_worker_crash", {"error": str(e)})
-        set_status(f"GRAPH REF error: {e}")
-    finally:
-        if client is not None:
-            try:
-                client.close()
-            except Exception:
-                pass
-        _star_lock.release()
-
-
 def _unregister_hotkeys() -> None:
     global _KEYBOARD_HOOK_HANDLE
     if not KEYBOARD_AVAILABLE:
@@ -576,12 +551,10 @@ def setup_hotkeys(icon, announce: bool = True) -> bool:
         run_hk = RUN_HOTKEY
         quit_hk = QUIT_HOTKEY
         star_hk = REF_TOGGLE_HOTKEY
-        graph_star_hk = GRAPH_REF_TOGGLE_HOTKEY
         cycle_hk = CYCLE_MODEL_HOTKEY
 
         _HOTKEY_HANDLES.append(keyboard.add_hotkey(run_hk, lambda: _debounced("run", worker)))
         _HOTKEY_HANDLES.append(keyboard.add_hotkey(quit_hk, lambda: on_quit(icon, None)))
-        _HOTKEY_HANDLES.append(keyboard.add_hotkey(graph_star_hk, lambda: _debounced("graph_ref", graph_star_worker)))
         _HOTKEY_HANDLES.append(
             keyboard.add_hotkey(cycle_hk, lambda: _debounced("cycle_model", lambda: cycle_model_worker(icon)))
         )
@@ -598,7 +571,6 @@ def setup_hotkeys(icon, announce: bool = True) -> bool:
             "ref_hotkey_config",
             {
                 "star_hotkey": star_hk,
-                "graph_star_hotkey": graph_star_hk,
                 "combo_keys": sorted(_ref_combo_keys),
                 "run_hotkey": run_hk,
                 "quit_hotkey": quit_hk,
@@ -636,19 +608,20 @@ def _on_tray_star_toggle(_icon, _item):
     threading.Thread(target=_toggle_and_refresh, daemon=True).start()
 
 
-def _on_tray_graph_star_toggle(_icon, _item):
-    def _toggle_and_refresh():
-        before_state = _is_graph_ref_active_session()
-        try:
-            graph_star_worker()
-        finally:
-            after_state = _is_graph_ref_active_session()
-            if after_state != before_state:
-                set_status("GRAPH REF ON" if after_state else "GRAPH REF OFF")
-            if _TRAY_ICON is not None:
-                _refresh_tray_menu(_TRAY_ICON)
-
-    threading.Thread(target=_toggle_and_refresh, daemon=True).start()
+def _on_tray_graph_mode_toggle(_icon, _item):
+    try:
+        current = _is_graph_mode_enabled()
+        updated = set_graph_mode(not current)
+        if updated:
+            set_status("GRAPH MODE ON")
+        else:
+            set_status("GRAPH MODE OFF")
+    except Exception as e:
+        log_telemetry("graph_mode_toggle_error", {"error": str(e)})
+        set_status(f"GRAPH MODE toggle failed: {e}")
+    finally:
+        if _TRAY_ICON is not None:
+            _refresh_tray_menu(_TRAY_ICON)
 
 
 def _on_tray_select_model(icon, _item, model_name: str):
@@ -679,11 +652,11 @@ def _is_ref_active_session() -> bool:
         return False
 
 
-def _is_graph_ref_active_session() -> bool:
+def _is_graph_mode_enabled() -> bool:
     try:
-        return bool(load_starred_meta().get("graph_reference_active", False))
+        return bool(load_starred_meta().get("graph_mode", False))
     except Exception as e:
-        log_telemetry("graph_ref_state_read_error", {"error": str(e)})
+        log_telemetry("graph_mode_state_read_error", {"error": str(e)})
         return False
 
 
@@ -698,9 +671,9 @@ def _build_tray_menu():
     cfg = get_config()
     models = _normalize_available_models(cfg)
     ref_active = _is_ref_active_session()
-    graph_ref_active = _is_graph_ref_active_session()
+    graph_mode = _is_graph_mode_enabled()
     ref_label = "REF ON" if ref_active else "REF OFF"
-    graph_ref_label = "GRAPH REF ON" if graph_ref_active else "GRAPH REF OFF"
+    graph_mode_label = "GRAPH MODE ON" if graph_mode else "GRAPH MODE OFF"
 
     model_items = [item("AUTO", _on_tray_auto_model_placeholder)]
     model_items.extend([
@@ -717,7 +690,7 @@ def _build_tray_menu():
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
         item(ref_label, _on_tray_star_toggle, default=True),
-        item(graph_ref_label, _on_tray_graph_star_toggle),
+        item(graph_mode_label, _on_tray_graph_mode_toggle),
         item("Model", pystray.Menu(*model_items)),
         # No Quit menu item: close is handled by right-click tray policy.
     )

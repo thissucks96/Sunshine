@@ -30,7 +30,6 @@ STARRED_META_FILE = "STARRED_META.json"
 STARRED_TEXT_FILE = "STARRED.txt"
 STARRED_IMG_DIR = "REFERENCE_IMG"
 STARRED_IMG_FILE = "current_starred.png"
-GRAPH_REF_IMG_FILE = "current_graph_ref.png"
 
 REFERENCE_TYPE_IMG = "IMG"
 REFERENCE_TYPE_TEXT = "TEXT"
@@ -118,6 +117,19 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
     "After GRAPH_EVIDENCE, continue normal WORK reasoning.\n"
 )
 
+GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
+    "You are extracting structured evidence from a graph image only.\n"
+    "If the image is not a graph on coordinate axes, return exactly: INVALID_GRAPH\n"
+    "Otherwise return exactly this block and nothing else:\n"
+    "GRAPH_EVIDENCE:\n"
+    "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
+    "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
+    "  CONFIDENCE: <0.0-1.0>\n"
+)
+
 FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
     "MANDATORY VISUAL EXTRACTION STEP:\n"
     "Before computing any answer, explicitly extract ALL of the following in your WORK section:\n"
@@ -186,9 +198,9 @@ def _default_reference_meta() -> Dict[str, Any]:
         "text_path": "",
         "image_path": "",
         "reference_summary": "",
-        "graph_reference_active": False,
-        "graph_image_path": "",
-        "graph_reference_summary": "",
+        "graph_mode": False,
+        "graph_evidence": None,
+        "last_primed_ts": 0,
     }
 
 
@@ -197,8 +209,15 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = str(meta.get("reference_summary", "") or "")
-    graph_reference_active = bool(meta.get("graph_reference_active", False))
-    graph_reference_summary = str(meta.get("graph_reference_summary", "") or "")
+    graph_mode = bool(meta.get("graph_mode", False))
+    raw_graph_evidence = meta.get("graph_evidence")
+    graph_evidence = str(raw_graph_evidence).strip() if isinstance(raw_graph_evidence, str) else None
+    if graph_evidence == "":
+        graph_evidence = None
+    try:
+        last_primed_ts = int(meta.get("last_primed_ts", 0) or 0)
+    except Exception:
+        last_primed_ts = 0
 
     # Backward compatibility for older STAR schema.
     if "enabled" in meta or "mode" in meta:
@@ -218,8 +237,8 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     if not reference_active:
         reference_type = None
         reference_summary = ""
-    if not graph_reference_active:
-        graph_reference_summary = ""
+        if not graph_mode:
+            graph_evidence = None
 
     return {
         "reference_active": reference_active,
@@ -227,9 +246,9 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
         "text_path": str(meta.get("text_path", "") or ""),
         "image_path": str(meta.get("image_path", "") or ""),
         "reference_summary": reference_summary,
-        "graph_reference_active": graph_reference_active,
-        "graph_image_path": str(meta.get("graph_image_path", "") or ""),
-        "graph_reference_summary": graph_reference_summary,
+        "graph_mode": graph_mode,
+        "graph_evidence": graph_evidence,
+        "last_primed_ts": last_primed_ts,
     }
 
 
@@ -265,23 +284,14 @@ def _clear_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
         "text_path": "",
         "image_path": "",
         "reference_summary": "",
-    })
-    return meta
-
-
-def _clear_graph_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
-    meta.update({
-        "graph_reference_active": False,
-        "graph_image_path": "",
-        "graph_reference_summary": "",
+        "graph_evidence": None,
+        "last_primed_ts": 0,
     })
     return meta
 
 
 def _set_reference_indicator_from_meta(meta: Dict[str, Any]) -> None:
-    set_reference_active(
-        bool(meta.get("reference_active", False) or meta.get("graph_reference_active", False))
-    )
+    set_reference_active(bool(meta.get("reference_active", False)))
 
 
 def clear_reference_state(source: str, status_message: Optional[str] = None) -> None:
@@ -292,7 +302,6 @@ def clear_reference_state(source: str, status_message: Optional[str] = None) -> 
         meta = _default_reference_meta()
 
     _clear_reference(meta)
-    _clear_graph_reference(meta)
     try:
         save_starred_meta(meta)
     except Exception as e:
@@ -317,13 +326,6 @@ def preview_text(text: str, max_chars: int = 140) -> str:
 def _can_assign_reference(meta: Dict[str, Any]) -> bool:
     if bool(meta.get("reference_active", False)):
         set_status("REF is active. Press STAR again to clear first.")
-        return False
-    return True
-
-
-def _can_assign_graph_reference(meta: Dict[str, Any]) -> bool:
-    if bool(meta.get("graph_reference_active", False)):
-        set_status("GRAPH REF is active. Toggle GRAPH REF again to clear first.")
         return False
     return True
 
@@ -364,6 +366,68 @@ def _summarize_visual_reference(client: OpenAI, model_name: str, img_b64: str, t
     except Exception as e:
         log_telemetry("summary_generation_error", {"type": REFERENCE_TYPE_IMG, "error": str(e)})
         return ""
+
+
+def _is_valid_graph_evidence_text(graph_evidence: Optional[str]) -> bool:
+    t = str(graph_evidence or "").strip()
+    if not t:
+        return False
+    if t.upper().startswith("INVALID_GRAPH"):
+        return False
+    return bool(_extract_graph_evidence_block(t))
+
+
+def set_graph_mode(enabled: bool) -> bool:
+    meta = load_starred_meta()
+    target = bool(enabled)
+    meta["graph_mode"] = target
+    if not target:
+        meta["graph_evidence"] = None
+        meta["last_primed_ts"] = 0
+    save_starred_meta(meta)
+    return bool(meta.get("graph_mode", False))
+
+
+def extract_graph_evidence(
+    image_path: str,
+    client: OpenAI,
+    model_name: str,
+    timeout: int,
+) -> str:
+    try:
+        with Image.open(str(image_path or "")) as im:
+            graph_img = normalize_image_for_api(im.convert("RGB"), get_config())
+        graph_b64 = image_to_base64_png(graph_img)
+    except Exception as e:
+        log_telemetry("graph_evidence_extract_error", {"stage": "image_load", "error": str(e)})
+        return "INVALID_GRAPH"
+
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": GRAPH_EVIDENCE_EXTRACTION_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{graph_b64}"}]},
+    ]
+    try:
+        extracted = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=max(8, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=500,
+            flow_name="graph_evidence_extract",
+        ).strip()
+    except Exception as e:
+        log_telemetry("graph_evidence_extract_error", {"stage": "api", "error": str(e)})
+        return "INVALID_GRAPH"
+
+    if not extracted:
+        return "INVALID_GRAPH"
+    if extracted.upper().startswith("INVALID_GRAPH"):
+        return "INVALID_GRAPH"
+    if _extract_graph_evidence_block(extracted) is None:
+        log_telemetry("graph_evidence_extract_error", {"stage": "parse", "error": "invalid_format"})
+        return "INVALID_GRAPH"
+    return extracted
 
 
 def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
@@ -554,6 +618,8 @@ def _build_solve_payload(
     reference_type: Optional[str],
     reference_text: str,
     reference_img_b64: str,
+    graph_mode: bool = False,
+    graph_evidence_text: Optional[str] = None,
     enable_graph_evidence_parsing: bool = False,
 ) -> List[Dict[str, Any]]:
     cfg = get_config()
@@ -612,6 +678,12 @@ def _build_solve_payload(
     if should_force_visual_extraction:
         forced_extraction_msg = {"type": "input_text", "text": FORCED_VISUAL_EXTRACTION_INSTRUCTION}
         user_parts.insert(0, forced_extraction_msg)
+    if graph_mode and _is_valid_graph_evidence_text(graph_evidence_text):
+        graph_ctx = (
+            "GRAPH MODE CACHED EVIDENCE (secondary context only; use for cross-checking graph features):\n"
+            + str(graph_evidence_text).strip()
+        )
+        user_parts.insert(0, {"type": "input_text", "text": graph_ctx})
 
     return [sys_msg, {"role": "user", "content": user_parts}]
 
@@ -1319,12 +1391,11 @@ def solve_pipeline(
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = preview_text(str(meta.get("reference_summary", "") or ""), 140)
-    graph_reference_active = bool(meta.get("graph_reference_active", False))
-    graph_reference_summary = preview_text(str(meta.get("graph_reference_summary", "") or ""), 140)
+    graph_mode = bool(meta.get("graph_mode", False))
+    graph_evidence_text = str(meta.get("graph_evidence") or "").strip()
     _set_reference_indicator_from_meta(meta)
     reference_text = ""
     reference_img_b64 = ""
-    graph_reference_img_b64 = ""
 
     if reference_active:
         if reference_type == REFERENCE_TYPE_TEXT:
@@ -1379,59 +1450,21 @@ def solve_pipeline(
             set_status("REF invalid: unknown reference type. REF CLEARED")
             return
 
-    if graph_reference_active:
-        graph_ip = str(meta.get("graph_image_path", "") or "")
-        if not graph_ip or not os.path.exists(graph_ip):
-            _clear_graph_reference(meta)
-            save_starred_meta(meta)
-            _set_reference_indicator_from_meta(meta)
-            set_status("GRAPH REF invalid: missing IMG source. GRAPH REF CLEARED")
-            return
-        try:
-            with Image.open(graph_ip) as graph_im:
-                graph_im = normalize_image_for_api(graph_im.convert("RGB"), cfg)
-                graph_reference_img_b64 = image_to_base64_png(graph_im)
-        except Exception as e:
-            log_telemetry("graph_ref_image_read_error", {"error": str(e)})
-            _clear_graph_reference(meta)
-            save_starred_meta(meta)
-            _set_reference_indicator_from_meta(meta)
-            set_status(f"GRAPH REF invalid: IMG read failed. GRAPH REF CLEARED. Error: {e}")
-            return
-        if not graph_reference_summary:
-            graph_reference_summary = "graph reference"
-
     if isinstance(input_obj, Image.Image):
         input_obj = normalize_image_for_api(input_obj, cfg)
 
-    graph_problem_like = isinstance(input_obj, Image.Image)
-    if not graph_problem_like and isinstance(input_obj, str):
-        graph_problem_like = any(cue in input_obj.lower() for cue in GRAPH_INTENT_CUES)
-
-    use_graph_reference = bool(graph_reference_active and graph_reference_img_b64 and graph_problem_like)
-
-    effective_reference_active = reference_active
-    effective_reference_type = reference_type
-    effective_reference_text = reference_text
-    effective_reference_img_b64 = reference_img_b64
-    effective_reference_summary = reference_summary
-    reference_prefix_label = ""
-    if use_graph_reference:
-        effective_reference_active = True
-        effective_reference_type = REFERENCE_TYPE_IMG
-        effective_reference_text = ""
-        effective_reference_img_b64 = graph_reference_img_b64
-        effective_reference_summary = graph_reference_summary
-        reference_prefix_label = "GRAPH"
-    elif reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        reference_prefix_label = reference_type
+    graph_evidence_active = bool(graph_mode and _is_valid_graph_evidence_text(graph_evidence_text))
+    if graph_mode and graph_evidence_text and not graph_evidence_active:
+        log_telemetry("graph_evidence_inactive", {"request_id": solve_request_id, "reason": "invalid_or_absent"})
 
     payload = _build_solve_payload(
         input_obj=input_obj,
-        reference_active=effective_reference_active,
-        reference_type=effective_reference_type,
-        reference_text=effective_reference_text,
-        reference_img_b64=effective_reference_img_b64,
+        reference_active=reference_active,
+        reference_type=reference_type,
+        reference_text=reference_text,
+        reference_img_b64=reference_img_b64,
+        graph_mode=graph_mode,
+        graph_evidence_text=graph_evidence_text if graph_evidence_active else None,
         enable_graph_evidence_parsing=enable_graph_evidence_parsing,
     )
     payload_has_image = False
@@ -1464,10 +1497,9 @@ def solve_pipeline(
             "width": image_width,
             "height": image_height,
             "pixel_count": image_pixel_count,
-            "reference_image_included": bool(
-                effective_reference_active and effective_reference_type == REFERENCE_TYPE_IMG and effective_reference_img_b64
-            ),
-            "graph_reference_image_included": use_graph_reference,
+            "reference_image_included": bool(reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64),
+            "graph_mode": graph_mode,
+            "graph_evidence_included": graph_evidence_active,
         },
     )
 
@@ -1576,14 +1608,11 @@ def solve_pipeline(
         return
 
     ref_prefix = ""
-    if effective_reference_active and effective_reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        effective_summary = effective_reference_summary
+    if reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
+        effective_summary = reference_summary
         if not effective_summary:
-            effective_summary = "visual reference" if effective_reference_type == REFERENCE_TYPE_IMG else "text reference"
-        if reference_prefix_label == "GRAPH":
-            ref_prefix = f"* REF GRAPH: {effective_summary}"
-        else:
-            ref_prefix = f"* REF {effective_reference_type}: {effective_summary}"
+            effective_summary = "visual reference" if reference_type == REFERENCE_TYPE_IMG else "text reference"
+        ref_prefix = f"* REF {reference_type}: {effective_summary}"
         out = f"{ref_prefix}\n{out}"
 
     final_text = _extract_final_answer_text(out)
@@ -1648,6 +1677,7 @@ def toggle_star_worker(client: OpenAI) -> None:
     reference_helper_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
     ref_model = reference_helper_model if _is_gpt5_family_model(model_name) else model_name
     meta = load_starred_meta()
+    graph_mode = bool(meta.get("graph_mode", False))
 
     # Strict toggle behavior: active -> clear only (no parse/overwrite in same action).
     if bool(meta.get("reference_active", False)):
@@ -1664,6 +1694,59 @@ def toggle_star_worker(client: OpenAI) -> None:
     raw_clip, err = safe_clipboard_read()
     if err is not None:
         log_telemetry("star_clipboard_read_error", {"error": str(err)})
+
+    # Graph mode path: next REF prime must be treated as graph image.
+    if graph_mode:
+        if not isinstance(raw_clip, Image.Image):
+            set_status("Graph Mode ON: copy a graph image before priming REF.")
+            return
+        try:
+            img = normalize_image_for_api(raw_clip, cfg)
+            img_b64 = image_to_base64_png(img)
+            img_dir = _starred_base_dir()
+            img_path = os.path.join(img_dir, STARRED_IMG_FILE)
+            img.save(img_path, format="PNG")
+            summary = _summarize_visual_reference(
+                client=client,
+                model_name=ref_model,
+                img_b64=img_b64,
+                timeout=int(cfg.get("classify_timeout", 8)),
+            ) or "graph reference"
+
+            meta.update({
+                "reference_active": True,
+                "reference_type": REFERENCE_TYPE_IMG,
+                "text_path": "",
+                "image_path": img_path,
+                "reference_summary": summary,
+            })
+            set_status("Graph Mode ON: extracting graph evidence...")
+            graph_evidence = extract_graph_evidence(
+                image_path=img_path,
+                client=client,
+                model_name=ref_model,
+                timeout=int(cfg.get("ocr_timeout", 12)),
+            )
+            meta["graph_evidence"] = graph_evidence
+            meta["last_primed_ts"] = int(time.time())
+            save_starred_meta(meta)
+            _set_reference_indicator_from_meta(meta)
+            log_telemetry(
+                "graph_mode_ref_primed",
+                {
+                    "evidence_valid": _is_valid_graph_evidence_text(graph_evidence),
+                    "summary_length": len(summary),
+                },
+            )
+            if _is_valid_graph_evidence_text(graph_evidence):
+                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE READY")
+            else:
+                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE INVALID (fallback enabled)")
+            return
+        except Exception as e:
+            log_telemetry("graph_mode_prime_error", {"error": str(e)})
+            set_status(f"Graph mode prime failed: {e}")
+            return
 
     # image case
     if isinstance(raw_clip, Image.Image):
@@ -1768,6 +1851,8 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "text_path": text_path,
                     "image_path": "",
                     "reference_summary": summary,
+                    "graph_evidence": None,
+                    "last_primed_ts": 0,
                 })
                 save_starred_meta(meta)
                 _set_reference_indicator_from_meta(meta)
@@ -1828,6 +1913,8 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "text_path": "",
                     "image_path": img_path,
                     "reference_summary": summary,
+                    "graph_evidence": None,
+                    "last_primed_ts": 0,
                 })
                 save_starred_meta(meta)
                 _set_reference_indicator_from_meta(meta)
@@ -1859,6 +1946,8 @@ def toggle_star_worker(client: OpenAI) -> None:
             "text_path": text_path,
             "image_path": "",
             "reference_summary": summary,
+            "graph_evidence": None,
+            "last_primed_ts": 0,
         })
         save_starred_meta(meta)
         _set_reference_indicator_from_meta(meta)
@@ -1866,58 +1955,3 @@ def toggle_star_worker(client: OpenAI) -> None:
         set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
     else:
         set_status("REF assign failed: no image/text in clipboard")
-
-
-def toggle_graph_reference_worker(client: OpenAI) -> None:
-    cfg = get_config()
-    model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
-    reference_helper_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
-    ref_model = reference_helper_model if _is_gpt5_family_model(model_name) else model_name
-    meta = load_starred_meta()
-
-    # Strict toggle behavior: active -> clear only.
-    if bool(meta.get("graph_reference_active", False)):
-        _clear_graph_reference(meta)
-        save_starred_meta(meta)
-        _set_reference_indicator_from_meta(meta)
-        set_status("GRAPH REF CLEARED")
-        return
-
-    if not _can_assign_graph_reference(meta):
-        return
-
-    raw_clip, err = safe_clipboard_read()
-    if err is not None:
-        log_telemetry("graph_ref_clipboard_read_error", {"error": str(err)})
-
-    if not isinstance(raw_clip, Image.Image):
-        set_status("GRAPH REF assign failed: image required on clipboard")
-        return
-
-    try:
-        img = normalize_image_for_api(raw_clip, cfg)
-        img_b64 = image_to_base64_png(img)
-        img_dir = _starred_base_dir()
-        img_path = os.path.join(img_dir, GRAPH_REF_IMG_FILE)
-        img.save(img_path, format="PNG")
-
-        summary = _summarize_visual_reference(
-            client=client,
-            model_name=ref_model,
-            img_b64=img_b64,
-            timeout=int(cfg.get("classify_timeout", 8)),
-        )
-        summary = summary or "graph reference"
-
-        meta.update({
-            "graph_reference_active": True,
-            "graph_image_path": img_path,
-            "graph_reference_summary": summary,
-        })
-        save_starred_meta(meta)
-        _set_reference_indicator_from_meta(meta)
-        log_telemetry("graph_ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
-        set_status(f"* REF GRAPH: {summary}")
-    except Exception as e:
-        log_telemetry("graph_ref_image_error", {"error": str(e)})
-        set_status(f"GRAPH REF failed: {e}")

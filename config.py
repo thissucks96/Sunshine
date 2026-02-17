@@ -35,6 +35,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "ENABLE_CONSISTENCY_WARNINGS": False,
     "ENABLE_CONSISTENCY_BLOCKING": False,
     "ENABLE_FORCED_VISUAL_EXTRACTION": False,
+    "graph_mode": False,
+    "graph_evidence": None,
+    "last_primed_ts": 0,
 
     # debounce
     "hotkey_debounce_ms": 250,
@@ -193,6 +196,25 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     if normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION") != forced_visual_extraction:
         normalized["ENABLE_FORCED_VISUAL_EXTRACTION"] = forced_visual_extraction
+
+    graph_mode = bool(normalized.get("graph_mode", DEFAULT_CONFIG["graph_mode"]))
+    if normalized.get("graph_mode") != graph_mode:
+        normalized["graph_mode"] = graph_mode
+
+    graph_evidence = normalized.get("graph_evidence", DEFAULT_CONFIG["graph_evidence"])
+    if graph_evidence is not None and not isinstance(graph_evidence, str):
+        graph_evidence = None
+    if isinstance(graph_evidence, str):
+        graph_evidence = graph_evidence.strip() or None
+    if normalized.get("graph_evidence") != graph_evidence:
+        normalized["graph_evidence"] = graph_evidence
+
+    try:
+        last_primed_ts = int(normalized.get("last_primed_ts", DEFAULT_CONFIG["last_primed_ts"]) or 0)
+    except Exception:
+        last_primed_ts = int(DEFAULT_CONFIG["last_primed_ts"])
+    if normalized.get("last_primed_ts") != last_primed_ts:
+        normalized["last_primed_ts"] = last_primed_ts
     return normalized
 
 
