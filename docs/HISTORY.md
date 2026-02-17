@@ -1,3 +1,10 @@
+## 2026-02-17 — Add Graph Identifier Model Selector Scaffold
+
+- Added config key `graph_identifier_model` with normalization and migration handling (including removed-model fallback).
+- Added tray menu selector `Graph Identifier Model` that persists a dedicated model choice for upcoming graph-presence identification logic.
+- Current runtime behavior is unchanged for solve/graph-toggle flows: this is selector scaffolding only, with no graph-toggle removal and no classifier execution yet.
+- Output contract unchanged: `WORK:` / `FINAL ANSWER:` headers, normalization, retry policy (graph retry disabled), and clipboard flow remain unchanged.
+
 ## 2026-02-17 — Pin Graph-Mode Evidence Extraction To gpt-5.2
 
 - Runtime behavior change in graph-mode REF priming: `extract_graph_evidence(...)` now always uses `gpt-5.2`.

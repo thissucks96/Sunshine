@@ -84,6 +84,9 @@
 - `llm_pipeline.py:439`: `client.responses.create(**req)`
 **B. Retry Guard**
 - `llm_pipeline.py:481`: Internal retry for "unsupported parameter temperature".
+**C. Graph Identifier Selector (Scaffold)**
+- Tray now includes a dedicated `Graph Identifier Model` selector persisted in config (`graph_identifier_model`).
+- This selector is currently preparatory only; graph-toggle behavior and solve routing are unchanged until classifier wiring is enabled.
 
 ### VIII. RETRY SYSTEM
 
