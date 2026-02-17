@@ -1,0 +1,11 @@
+WORK:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1, y_tick=1
+  CONFIDENCE: 0.55
+FINAL ANSWER:
+Domain: {-3, -1, 2, 5}
+Range: {4, 0, -2}

@@ -2,6 +2,7 @@ import ctypes
 import sys
 import threading
 import time
+import uuid
 from typing import Dict, Optional, Set
 
 import pyperclip
@@ -18,15 +19,21 @@ from config import (
     resolve_api_key,
     update_config_values,
 )
-from llm_pipeline import clear_reference_state, load_starred_meta, solve_pipeline, toggle_star_worker
+from llm_pipeline import (
+    clear_reference_state,
+    load_starred_meta,
+    set_graph_mode,
+    solve_pipeline,
+    toggle_star_worker,
+)
 from utils import (
     log_telemetry,
     normalize_image_for_api,
     safe_clipboard_read,
-    safe_clipboard_write,
     set_app_icon,
     set_reference_active,
     set_status,
+    show_message_box_notification,
 )
 
 try:
@@ -51,6 +58,11 @@ STOP_EVENT = threading.Event()
 _solve_lock = threading.Lock()
 _star_lock = threading.Lock()
 _model_lock = threading.Lock()
+_active_solve_state_lock = threading.Lock()
+_active_solve_client: Optional[OpenAI] = None
+_active_solve_cancel_event: Optional[threading.Event] = None
+_active_solve_id: str = ""
+_active_solve_model: str = ""
 
 _last_action_ts: Dict[str, float] = {}
 _debounce_lock = threading.Lock()
@@ -66,6 +78,7 @@ _ref_dispatch_lock = threading.Lock()
 
 _STARTUP_INPUT_LOCKOUT_SEC = 0.75
 _REF_TOGGLE_DEBOUNCE_SEC = 0.3
+GRAPH_EXTRACTION_MODEL = "gpt-5.2"
 
 
 def ensure_single_instance() -> bool:
@@ -147,7 +160,9 @@ def _verify_model_clipboard(model_name: str) -> bool:
     except Exception as e:
         log_telemetry("model_clipboard_verify", {"expected": expected, "ok": False, "error": str(e)})
         return False
-    ok = actual == expected
+    ok = actual == expected or (
+        "NOTIFICATION_TYPE: STATUS" in actual and f"MESSAGE: {expected}" in actual
+    )
     log_telemetry(
         "model_clipboard_verify",
         {"expected": expected, "actual_sample": actual[:120], "ok": ok},
@@ -157,8 +172,6 @@ def _verify_model_clipboard(model_name: str) -> bool:
 
 def _announce_model_active(model_name: str) -> bool:
     line = f"MODEL ACTIVE: {model_name}"
-    if not safe_clipboard_write(line):
-        log_telemetry("model_active_clipboard_error", {"model": model_name})
     set_status(line)
     return _verify_model_clipboard(model_name)
 
@@ -182,8 +195,9 @@ def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, requ
     timeout = int(cfg.get("request_timeout", 25))
     probe_timeout = max(5, min(timeout, 12))
     probe_model = str(call_model or model_name).strip() or str(model_name)
+    client: Optional[OpenAI] = None
     try:
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, max_retries=0)
         resp = client.responses.create(
             model=probe_model,
             input=[{"role": "user", "content": [{"type": "input_text", "text": "ok"}]}],
@@ -217,6 +231,32 @@ def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, requ
         reason = str(e) or "probe failed"
         log_telemetry("model_probe_failed", {"requested_model": model_name, "error": reason})
         return False, reason
+    finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+
+
+def _run_startup_model_probes(cfg: Optional[Dict[str, object]] = None) -> None:
+    c = cfg or get_config()
+    selected_model = _active_model_name(c)
+    selected_ok, selected_reason = _probe_model_runtime(selected_model)
+    if not selected_ok:
+        log_telemetry(
+            "startup_model_probe_failed",
+            {"model": selected_model, "reason": selected_reason, "probe_type": "selected"},
+        )
+        set_status(f"Selected model [{selected_model}] is offline; please select another.")
+
+    graph_model_ok, graph_model_reason = _probe_model_runtime(GRAPH_EXTRACTION_MODEL)
+    if not graph_model_ok:
+        log_telemetry(
+            "startup_model_probe_failed",
+            {"model": GRAPH_EXTRACTION_MODEL, "reason": graph_model_reason, "probe_type": "graph_extraction"},
+        )
+        set_status("5.2 is offline; High-precision Graph Extraction is disabled.")
 
 
 def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional[Dict[str, object]]:
@@ -225,6 +265,52 @@ def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional
     except Exception as e:
         log_telemetry("config_persist_error", {"source": source, "error": str(e), "keys": sorted(list(changes.keys()))})
         return None
+
+
+def _register_active_solve(client: OpenAI, cancel_event: threading.Event, solve_id: str, model_name: str) -> None:
+    global _active_solve_client, _active_solve_cancel_event, _active_solve_id, _active_solve_model
+    with _active_solve_state_lock:
+        _active_solve_client = client
+        _active_solve_cancel_event = cancel_event
+        _active_solve_id = str(solve_id or "")
+        _active_solve_model = str(model_name or "")
+    log_telemetry("solve_active_registered", {"solve_id": solve_id, "model": model_name})
+
+
+def _clear_active_solve(solve_id: Optional[str] = None) -> None:
+    global _active_solve_client, _active_solve_cancel_event, _active_solve_id, _active_solve_model
+    cleared = False
+    with _active_solve_state_lock:
+        if solve_id and _active_solve_id and solve_id != _active_solve_id:
+            return
+        if _active_solve_client is not None or _active_solve_cancel_event is not None:
+            cleared = True
+        _active_solve_client = None
+        _active_solve_cancel_event = None
+        _active_solve_id = ""
+        _active_solve_model = ""
+    if cleared:
+        log_telemetry("solve_active_cleared", {"solve_id": solve_id or ""})
+
+
+def _cancel_active_solve(reason: str) -> bool:
+    with _active_solve_state_lock:
+        cancel_event = _active_solve_cancel_event
+        client = _active_solve_client
+        solve_id = _active_solve_id
+        model_name = _active_solve_model
+        if cancel_event is None:
+            return False
+        if cancel_event.is_set():
+            return False
+        cancel_event.set()
+    try:
+        if client is not None:
+            client.close()
+    except Exception as e:
+        log_telemetry("solve_cancel_close_error", {"solve_id": solve_id, "reason": reason, "error": str(e)})
+    log_telemetry("solve_cancel_requested", {"solve_id": solve_id, "model": model_name, "reason": reason})
+    return True
 
 
 def cycle_model_worker(icon) -> None:
@@ -245,6 +331,9 @@ def cycle_model_worker(icon) -> None:
         except ValueError:
             old_idx = 0
         new_model = models[(old_idx + 1) % len(models)]
+
+        if old_model != new_model:
+            _cancel_active_solve(f"model_switch_hotkey_preprobe:{old_model}->{new_model}")
 
         ok_probe, reason = _probe_model_runtime(new_model)
         if not ok_probe:
@@ -269,6 +358,7 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
     with _model_lock:
         cfg = get_config()
         models = _normalize_available_models(cfg)
+        old_model = _active_model_name(cfg)
         target_model = str(model_name or "").strip()
         if not target_model:
             set_status("MODEL CHANGE FAILED: empty model")
@@ -277,12 +367,14 @@ def _set_model_from_ui(icon, model_name: str, source: str) -> None:
             set_status(f"MODEL CHANGE FAILED: unknown model '{target_model}'")
             return
 
+        if old_model != target_model:
+            _cancel_active_solve(f"model_switch_{source}_preprobe:{old_model}->{target_model}")
+
         ok_probe, reason = _probe_model_runtime(target_model)
         if not ok_probe:
             set_status(f"MODEL CHANGE FAILED: {reason}")
             return
 
-        old_model = _active_model_name(cfg)
         updated = _persist_config_changes({"model": target_model, "available_models": models}, source=source)
         if updated is None:
             set_status("MODEL CHANGE FAILED: unable to persist config")
@@ -378,7 +470,12 @@ def _on_keyboard_event(event) -> None:
 
 def worker() -> None:
     if not _solve_lock.acquire(blocking=False):
+        log_telemetry("solve_skip_busy", {"reason": "solve_in_progress"})
+        set_status("Solve skipped: previous request still running.")
         return
+    solve_id = f"solve-{uuid.uuid4().hex[:10]}"
+    cancel_event = threading.Event()
+    client: Optional[OpenAI] = None
     try:
         cfg = get_config()
         api_key = resolve_api_key(cfg)
@@ -386,11 +483,14 @@ def worker() -> None:
             set_status("Missing API key (config.json or OPENAI_API_KEY).")
             return
 
-        client = OpenAI(api_key=api_key)
+        model_name = _active_model_name(cfg)
+        client = OpenAI(api_key=api_key, max_retries=0)
+        _register_active_solve(client, cancel_event, solve_id, model_name)
+        log_telemetry("solve_worker_start", {"solve_id": solve_id, "model": model_name})
         raw_clip, _ = safe_clipboard_read()
         if isinstance(raw_clip, Image.Image):
             img = normalize_image_for_api(raw_clip, cfg)
-            solve_pipeline(client, img)
+            solve_pipeline(client, img, cancel_event=cancel_event, request_id=solve_id)
             return
 
         try:
@@ -399,31 +499,43 @@ def worker() -> None:
             text = ""
 
         if text:
-            solve_pipeline(client, text)
+            solve_pipeline(client, text, cancel_event=cancel_event, request_id=solve_id)
         else:
             set_status("No image or text found on clipboard.")
     except Exception as e:
-        log_telemetry("worker_crash", {"error": str(e)})
+        log_telemetry("worker_crash", {"solve_id": solve_id, "error": str(e)})
         set_status(f"Worker error: {e}")
     finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+        _clear_active_solve(solve_id)
         _solve_lock.release()
 
 
 def star_worker() -> None:
     if not _star_lock.acquire(blocking=False):
         return
+    client: Optional[OpenAI] = None
     try:
         cfg = get_config()
         api_key = resolve_api_key(cfg)
         if not api_key:
             set_status("Missing API key; STAR unavailable.")
             return
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, max_retries=0)
         toggle_star_worker(client)
     except Exception as e:
         log_telemetry("star_worker_crash", {"error": str(e)})
         set_status(f"STAR error: {e}")
     finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
         _star_lock.release()
 
 
@@ -517,6 +629,22 @@ def _on_tray_star_toggle(_icon, _item):
     threading.Thread(target=_toggle_and_refresh, daemon=True).start()
 
 
+def _on_tray_graph_mode_toggle(_icon, _item):
+    try:
+        current = _is_graph_mode_enabled()
+        updated = set_graph_mode(not current)
+        if updated:
+            set_status("GRAPH MODE ON")
+        else:
+            set_status("GRAPH MODE OFF")
+    except Exception as e:
+        log_telemetry("graph_mode_toggle_error", {"error": str(e)})
+        set_status(f"GRAPH MODE toggle failed: {e}")
+    finally:
+        if _TRAY_ICON is not None:
+            _refresh_tray_menu(_TRAY_ICON)
+
+
 def _on_tray_select_model(icon, _item, model_name: str):
     _set_model_from_ui(icon, model_name, source="tray")
 
@@ -545,6 +673,14 @@ def _is_ref_active_session() -> bool:
         return False
 
 
+def _is_graph_mode_enabled() -> bool:
+    try:
+        return bool(load_starred_meta().get("graph_mode", False))
+    except Exception as e:
+        log_telemetry("graph_mode_state_read_error", {"error": str(e)})
+        return False
+
+
 def _make_model_select_action(model_name: str):
     def _action(icon, menu_item):
         _on_tray_select_model(icon, menu_item, model_name)
@@ -556,7 +692,9 @@ def _build_tray_menu():
     cfg = get_config()
     models = _normalize_available_models(cfg)
     ref_active = _is_ref_active_session()
+    graph_mode = _is_graph_mode_enabled()
     ref_label = "REF ON" if ref_active else "REF OFF"
+    graph_mode_label = "GRAPH MODE ON" if graph_mode else "GRAPH MODE OFF"
 
     model_items = [item("AUTO", _on_tray_auto_model_placeholder)]
     model_items.extend([
@@ -573,6 +711,7 @@ def _build_tray_menu():
     return pystray.Menu(
         item("Solve Now", _on_tray_solve_now),
         item(ref_label, _on_tray_star_toggle, default=True),
+        item(graph_mode_label, _on_tray_graph_mode_toggle),
         item("Model", pystray.Menu(*model_items)),
         # No Quit menu item: close is handled by right-click tray policy.
     )
@@ -649,22 +788,14 @@ def main():
     global _TRAY_ICON
     if not ensure_single_instance():
         msg = "App is already running."
-        try:
-            pyperclip.copy(msg)
-        except Exception:
-            pass
-        ctypes.windll.user32.MessageBoxW(0, msg, "Error", 0x10)
+        show_message_box_notification(msg, title="Error", flags=0x10, level="ERROR", source="main.ensure_single_instance")
         sys.exit(1)
 
     cfg = get_config()
     api_key = resolve_api_key(cfg)
     if not api_key:
         msg = "OpenAI API key not found.\nApp will start, but solve/star features require a key."
-        try:
-            pyperclip.copy(msg)
-        except Exception:
-            pass
-        ctypes.windll.user32.MessageBoxW(0, msg, "Missing API Key", 0x30)
+        show_message_box_notification(msg, title="Missing API Key", flags=0x30, level="ERROR", source="main.missing_api_key")
 
     icon = pystray.Icon(APP_NAME, Image.new("RGB", (64, 64), "teal"), APP_NAME, menu=_build_tray_menu())
     _TRAY_ICON = icon
@@ -675,6 +806,8 @@ def main():
     set_reference_active(False)
 
     setup_hotkeys(icon)
+    if api_key:
+        _run_startup_model_probes(cfg)
     _announce_model_active(_active_model_name(cfg))
     log_telemetry("startup_model", {"model": _active_model_name(cfg)})
     icon.run()

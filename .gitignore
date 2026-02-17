@@ -28,6 +28,7 @@ dist/
 # =========================
 solver_telemetry.jsonl
 *.log
+img_test_set/
 REFERENCE_IMG/
 STARRED.txt
 STARRED_META.json

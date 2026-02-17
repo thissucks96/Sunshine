@@ -1,6 +1,68 @@
+# Project State & Execution Context
+
 # SunnyNotSummer - Agent Operating Guide
 
 Use this file as the default instruction set for coding agents working in this repo.
+
+## Current Stable Anchor
+* Branch: `feature/forced-visual-extraction`
+* Stable Tag: `exam-ready-v1`
+* Latest Commit: `4b113ac`
+* Feature Flags Default: All new diagnostic flags OFF
+
+## Session Start Protocol
+* Always run `git status`.
+* Never modify unrelated files.
+* Show `git diff` before commit.
+* No push without explicit approval.
+
+## Rollback Anchors Reference
+* `exam-ready-v1` (`edc730f`)
+* `pre-validator-stable` (`31ece74`)
+* `master-bedrock` (`77bc30b`)
+* `first-graph-success` (`552a7ad`)
+
+## Stabilization Status
+* Current branch: `feature/forced-visual-extraction`
+* Working tree: clean (before current docs update)
+* Unified graph mode runtime: implemented and tested
+* Graph-mode targeted suite: `tests/test_graph_mode_behavior.py` passing
+* Feature flags default: OFF
+* Output contract remains stable (`WORK:` / `FINAL ANSWER:` unchanged)
+
+## Branching Strategy
+* Active stabilization branch: `feature/forced-visual-extraction`
+* This branch supersedes `implement-auto-model-feature`
+* Unified graph mode must remain fully stable before new feature work
+* Auto-model will be implemented in a NEW branch created from this stabilized baseline
+* No auto-model development should occur on this branch
+* New branch creation requires explicit approval
+
+---
+
+## Architecture Map Governance
+
+**Canonical Reference**: `docs/executionMAP.md` is the forensic source of truth for the system's execution flow.
+
+### 1. Mandatory Pre-Change Review
+Before proposing any runtime code modification, you MUST:
+- Read `docs/executionMAP.md`.
+- Identify which specific Execution Layer (e.g., Payload Construction, Output Normalization) your change affects.
+- Explicitly reference these layers in your plan.
+
+### 2. Bidirectional Synchronization
+- **Code ↔ Map**: Any commit that alters runtime behavior (new flags, logic branches, file inputs, or output formats) MUST include a corresponding update to `docs/executionMAP.md`.
+- **History**: Any functional change MUST be logged in `docs/HISTORY.md`.
+- **Drift Zero Tolerance**: Architecture drift is not allowed. If the code diverges from the map, the map must be updated immediately.
+
+## Pre-Planning Synchronization Requirement
+
+Before proposing any runtime change, the agent MUST:
+1. Read `docs/executionMAP.md`.
+2. Read `docs/HISTORY.md`.
+3. Review `docs/relevant.md` for open investigations.
+4. Review the last 3–5 commits via `git log`.
+5. Explicitly state alignment before proposing changes.
 
 ---
 

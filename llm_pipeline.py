@@ -4,11 +4,13 @@ import json
 import base64
 import re
 import time
+import uuid
+import statistics
 from fractions import Fraction
 from typing import Any, Dict, List, Optional, Union
 
 import pyperclip
-from PIL import Image
+from PIL import Image, ImageStat
 from openai import OpenAI
 
 from config import get_config, MODEL, app_home_dir
@@ -103,6 +105,122 @@ STARRED_CONTEXT_GUIDE = (
     "If reference conflicts with current input, trust current input.\n"
 )
 
+GRAPH_EVIDENCE_PROMPT_APPEND = (
+    "For graph problems only, begin WORK with a structured GRAPH_EVIDENCE block.\n"
+    "Forensic rules of engagement:\n"
+    "- Observation-first: act as a visual witness only. Do not infer from problem text.\n"
+    "- Scale-first: locate axis labels before coordinates. If labels are not visible, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
+    "- Unknown safety: if blurry/cutoff/obstructed, use unclear for affected values.\n"
+    "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
+    "- Asymptotes: report visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even if no dashed guide is drawn; if far-left and far-right tails flatten toward the same y-level, record that horizontal asymptote; do not label x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
+    "- Intercepts: for lines/curves crossing axes, populate INTERCEPTS with visible x- and y-axis crossings.\n"
+    "- Key points: populate KEY_POINTS for clearly marked dots and query-driven reads (for example f(2), g(-2), h(x)=13) when coordinates are visually recoverable.\n"
+    "- Dark mode handling: for low-contrast graphs, prioritize high-contrast curve pixels and axis labels, calibrate minor-grid subdivisions from major labels, and avoid decorative overlay text; for query anchors like f(2), trace x=2 and report the nearest clearly supported grid value; if still ambiguous, use unclear.\n"
+    "- INTERCEPTS and KEY_POINTS are optional, but include them whenever visually supported.\n"
+    "Output exactly this block shape:\n"
+    "GRAPH_EVIDENCE:\n"
+    "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
+    "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  INTERCEPTS: <none|(x=<...>, y=0); (x=0, y=<...>); ...>\n"
+    "  KEY_POINTS: <none|(x=<...>, y=<...>); ...>\n"
+    "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
+    "  CONFIDENCE: <0.0-1.0>\n"
+    "Inside GRAPH_EVIDENCE do not include WORK, FINAL ANSWER, or [FINAL].\n"
+    "After GRAPH_EVIDENCE, continue normal WORK reasoning.\n"
+)
+
+GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
+    "You are extracting structured evidence from a graph image only.\n"
+    "Forensic rules of engagement:\n"
+    "- Observation-first: you are a visual witness. Do not perform algebraic inference from text.\n"
+    "- Only report features visible in pixels; if not visible, treat as absent or unclear.\n"
+    "- Scale-first calibration: identify axis-unit labels before coordinates. If labels are absent, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
+    "- Unknown safety: if image is blurry/cutoff/obstructed, use unclear for those values.\n"
+    "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
+    "- Asymptotes: identify visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even without a dashed guide; if both tails flatten toward the same y-level, include that horizontal asymptote; do not classify x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
+    "- Intercepts: when a line/curve visibly crosses axes, populate INTERCEPTS with axis crossing coordinates.\n"
+    "- Key points: populate KEY_POINTS for marked dots and query-driven reads visible in the image (for example f(2), g(-2), h(x)=13).\n"
+    "- Dark mode handling: in low-contrast images, prioritize high-intensity curve/axis pixels, calibrate from major tick labels before reading points, and avoid overlay artifacts; for query anchors like f(2), trace x=2 and report the nearest clearly supported grid value.\n"
+    "- INTERCEPTS and KEY_POINTS are optional, but include them whenever visually supported.\n"
+    "If the image is not a graph on coordinate axes, return exactly: INVALID_GRAPH\n"
+    "Otherwise return exactly this block and nothing else:\n"
+    "GRAPH_EVIDENCE:\n"
+    "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
+    "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
+    "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  INTERCEPTS: <none|(x=<...>, y=0); (x=0, y=<...>); ...>\n"
+    "  KEY_POINTS: <none|(x=<...>, y=<...>); ...>\n"
+    "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
+    "  CONFIDENCE: <0.0-1.0>\n"
+)
+
+# Graph evidence extraction is intentionally pinned to the strongest visual model.
+GRAPH_EVIDENCE_EXTRACTION_MODEL = "gpt-5.2"
+
+DARK_MODE_GRAPH_FORENSIC_APPEND = (
+    "Dark-mode forensic override:\n"
+    "- Mentally invert low-contrast visuals: treat bright curve/axis traces as primary signal.\n"
+    "- Anchor mapping: locate origin (0,0) first, calibrate axis labels, then count grid units to query x/y targets.\n"
+    "- Noise filtering: ignore faint background artifacts and decorative overlays.\n"
+)
+
+DARK_MODE_KEYPOINT_CANDIDATES_PROMPT = (
+    "You are extracting one primary KEY_POINT from a dark/low-contrast coordinate graph.\n"
+    "Use forensic reading only:\n"
+    "- Mentally invert low-contrast visuals.\n"
+    "- Locate origin and calibrate scale from visible labels before reading coordinates.\n"
+    "- Ignore faint background artifacts and overlays.\n"
+    "Standard math problems align key points to integer grid intersections. Aggressively favor integer coordinates (e.g., (2, -2)) over fractional ones (e.g., (2.1, -1.9)) unless the point clearly lies between grid lines. Treat minor pixel deviations as noise.\n"
+    "If a query anchor is visible (for example f(2), g(-2), h(x)=13), prioritize that key point.\n"
+    "Return exactly one line and nothing else in this format:\n"
+    "KEY_POINT_CANDIDATES: (x=<num>, y=<num>); (x=<num>, y=<num>); (x=<num>, y=<num>)\n"
+    "If no usable key point is visible, return exactly:\n"
+    "KEY_POINT_CANDIDATES: none"
+)
+
+DARK_MODE_FILENAME_CUES = ("dark mode", "dark_mode", "darkmode")
+
+GRAPH_IDENTIFIER_PROMPT = (
+    "Your sole task is to determine whether a coordinate axes graph is present.\n"
+    "A coordinate graph means visible grid and x/y axes with at least one plotted line or curve.\n"
+    "If it exists, even with text, tables, or UI elements present, return exactly:\n"
+    '{"is_graph": "YES", "reasoning": "..."}\n'
+    "If no coordinate axes graph exists, return exactly:\n"
+    '{"is_graph": "NO", "reasoning": "..."}\n'
+    "Return JSON only. No markdown, no code fences, no extra keys."
+)
+# Graph presence detection is pinned to the strongest graph vision model.
+GRAPH_IDENTIFIER_MODEL = "gpt-5.2"
+
+FORCED_VISUAL_EXTRACTION_INSTRUCTION = (
+    "MANDATORY VISUAL EXTRACTION STEP:\n"
+    "Before computing any answer, explicitly extract ALL of the following in your WORK section:\n"
+    "1. X-axis scale (units per tick)\n"
+    "2. Left Boundary (coordinate + open/closed)\n"
+    "3. Right Boundary (coordinate + open/closed)\n"
+    "4. Arrows (direction of continuation)\n"
+    "5. Asymptotes (vertical/horizontal lines)\n"
+    "6. Discontinuities (holes/breaks)\n"
+    "If a feature is absent, write 'None'. If ambiguous or blocked, write 'Unknown'.\n"
+    "Do NOT guess coordinates. Derive your FINAL ANSWER strictly from evidence."
+)
+
+GRAPH_INTENT_CUES = (
+    "domain",
+    "range",
+    "interval notation",
+    "open circle",
+    "closed circle",
+    "hole",
+    "asymptote",
+    "arrow",
+    "endpoint",
+    "discontinuity",
+)
+
 
 def _normalize_star_label(raw: str) -> str:
     s = " ".join(str(raw or "").upper().split())
@@ -145,6 +263,9 @@ def _default_reference_meta() -> Dict[str, Any]:
         "text_path": "",
         "image_path": "",
         "reference_summary": "",
+        "graph_mode": False,
+        "graph_evidence": None,
+        "last_primed_ts": 0,
     }
 
 
@@ -153,6 +274,15 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = str(meta.get("reference_summary", "") or "")
+    graph_mode = bool(meta.get("graph_mode", False))
+    raw_graph_evidence = meta.get("graph_evidence")
+    graph_evidence = str(raw_graph_evidence).strip() if isinstance(raw_graph_evidence, str) else None
+    if graph_evidence == "":
+        graph_evidence = None
+    try:
+        last_primed_ts = int(meta.get("last_primed_ts", 0) or 0)
+    except Exception:
+        last_primed_ts = 0
 
     # Backward compatibility for older STAR schema.
     if "enabled" in meta or "mode" in meta:
@@ -172,6 +302,8 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
     if not reference_active:
         reference_type = None
         reference_summary = ""
+        if not graph_mode:
+            graph_evidence = None
 
     return {
         "reference_active": reference_active,
@@ -179,6 +311,9 @@ def _normalize_reference_meta(raw_meta: Dict[str, Any]) -> Dict[str, Any]:
         "text_path": str(meta.get("text_path", "") or ""),
         "image_path": str(meta.get("image_path", "") or ""),
         "reference_summary": reference_summary,
+        "graph_mode": graph_mode,
+        "graph_evidence": graph_evidence,
+        "last_primed_ts": last_primed_ts,
     }
 
 
@@ -187,8 +322,7 @@ def load_starred_meta() -> Dict[str, Any]:
     default_meta = _default_reference_meta()
     if not os.path.exists(p):
         meta = default_meta
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(meta, f, indent=2)
+        save_starred_meta(meta)
         return meta
     try:
         with open(p, "r", encoding="utf-8") as f:
@@ -203,8 +337,12 @@ def load_starred_meta() -> Dict[str, Any]:
 
 
 def save_starred_meta(meta: Dict[str, Any]) -> None:
-    with open(_starred_meta_path(), "w", encoding="utf-8") as f:
+    target_path = _starred_meta_path()
+    target_dir = os.path.dirname(target_path) or "."
+    tmp_path = os.path.join(target_dir, f".{os.path.basename(target_path)}.tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
+    os.replace(tmp_path, target_path)
 
 
 def _clear_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
@@ -214,8 +352,14 @@ def _clear_reference(meta: Dict[str, Any]) -> Dict[str, Any]:
         "text_path": "",
         "image_path": "",
         "reference_summary": "",
+        "graph_evidence": None,
+        "last_primed_ts": 0,
     })
     return meta
+
+
+def _set_reference_indicator_from_meta(meta: Dict[str, Any]) -> None:
+    set_reference_active(bool(meta.get("reference_active", False)))
 
 
 def clear_reference_state(source: str, status_message: Optional[str] = None) -> None:
@@ -231,7 +375,7 @@ def clear_reference_state(source: str, status_message: Optional[str] = None) -> 
     except Exception as e:
         log_telemetry("ref_clear_error", {"source": source, "error": str(e)})
 
-    set_reference_active(False)
+    _set_reference_indicator_from_meta(meta)
     log_telemetry("ref_clear", {"source": source})
     if status_message:
         set_status(status_message)
@@ -292,6 +436,381 @@ def _summarize_visual_reference(client: OpenAI, model_name: str, img_b64: str, t
         return ""
 
 
+def _is_valid_graph_evidence_text(graph_evidence: Optional[str]) -> bool:
+    t = str(graph_evidence or "").strip()
+    if not t:
+        return False
+    if t.upper().startswith("INVALID_GRAPH"):
+        return False
+    return bool(_extract_graph_evidence_block(t))
+
+
+def set_graph_mode(enabled: bool) -> bool:
+    meta = load_starred_meta()
+    target = bool(enabled)
+    meta["graph_mode"] = target
+    if not target:
+        meta["graph_evidence"] = None
+        meta["last_primed_ts"] = 0
+    save_starred_meta(meta)
+    return bool(meta.get("graph_mode", False))
+
+
+def _is_dark_mode_image(image_path: str, img: Image.Image) -> bool:
+    name = str(os.path.basename(str(image_path or ""))).lower()
+    if any(cue in name for cue in DARK_MODE_FILENAME_CUES):
+        return True
+    try:
+        gray = img.convert("L")
+        hist = gray.histogram()
+        total = float(sum(hist) or 1.0)
+        dark_ratio = float(sum(hist[:80])) / total
+        bright_ratio = float(sum(hist[180:])) / total
+        mean_luma = float(ImageStat.Stat(gray).mean[0])
+        return mean_luma <= 110.0 and dark_ratio >= 0.40 and bright_ratio >= 0.01
+    except Exception:
+        return False
+
+
+def _parse_candidate_xy_pairs(text: str) -> List[Dict[str, float]]:
+    out: List[Dict[str, float]] = []
+    raw = str(text or "")
+    m_line = re.search(r"(?im)^\s*KEY_POINT_CANDIDATES\s*:\s*(.+?)\s*$", raw)
+    if not m_line:
+        return out
+    body = m_line.group(1).strip()
+    if body.lower() in ("none", "n/a", "na"):
+        return out
+    for m in re.finditer(
+        r"\(\s*x\s*=\s*(-?\d+(?:\.\d+)?)\s*,\s*y\s*=\s*(-?\d+(?:\.\d+)?)\s*\)",
+        body,
+        flags=re.IGNORECASE,
+    ):
+        try:
+            out.append({"x": float(m.group(1)), "y": float(m.group(2))})
+        except Exception:
+            continue
+    return out
+
+
+def _rerank_candidate_axis(values: List[float]) -> Optional[float]:
+    if not values:
+        return None
+    integer_votes: Dict[int, int] = {}
+    for v in values:
+        iv = int(round(v))
+        if abs(v - iv) <= 0.25:
+            integer_votes[iv] = integer_votes.get(iv, 0) + 1
+    if integer_votes:
+        winner, count = sorted(integer_votes.items(), key=lambda x: (-x[1], abs(x[0])))[0]
+        if count >= 2:
+            return float(winner)
+    return float(statistics.median(values))
+
+
+def _snap_value(val: float, threshold: float = 0.15) -> float:
+    nearest = round(float(val))
+    if abs(float(val) - nearest) <= float(threshold):
+        return float(nearest)
+    return float(val)
+
+
+def _rerank_dark_mode_key_point(candidates: List[Dict[str, float]]) -> Optional[Dict[str, float]]:
+    if len(candidates) < 2:
+        return None
+    snapped_candidates: List[Dict[str, float]] = []
+    for c in candidates:
+        if "x" not in c or "y" not in c:
+            continue
+        snapped_candidates.append({
+            "x": _snap_value(float(c.get("x")), threshold=0.15),
+            "y": _snap_value(float(c.get("y")), threshold=0.15),
+        })
+    xs = [float(c.get("x")) for c in snapped_candidates if "x" in c]
+    ys = [float(c.get("y")) for c in snapped_candidates if "y" in c]
+    x_final = _rerank_candidate_axis(xs)
+    y_final = _rerank_candidate_axis(ys)
+    if x_final is None or y_final is None:
+        return None
+    return {"x": x_final, "y": y_final}
+
+
+def _format_coord_value(v: float) -> str:
+    if abs(v - round(v)) < 1e-9:
+        return str(int(round(v)))
+    return f"{float(v):.2f}".rstrip("0").rstrip(".")
+
+
+def _parse_key_point_token(token: str) -> Optional[Dict[str, float]]:
+    t = str(token or "")
+    m = re.search(
+        r"\(\s*x\s*=\s*(-?\d+(?:\.\d+)?)\s*,\s*y\s*=\s*(-?\d+(?:\.\d+)?)\s*\)",
+        t,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        return None
+    try:
+        return {"x": float(m.group(1)), "y": float(m.group(2))}
+    except Exception:
+        return None
+
+
+def _should_apply_dark_mode_recovery(existing_key_points: List[str]) -> bool:
+    if not existing_key_points:
+        return True
+    first = _parse_key_point_token(existing_key_points[0])
+    if first is None:
+        return True
+    return abs(first["y"] - round(first["y"])) > 0.20
+
+
+def _upsert_graph_evidence_field_line(text: str, field_key: str, value: str) -> str:
+    source = str(text or "")
+    key = str(field_key or "").strip().upper()
+    if not source or not key:
+        return source
+    lines = source.splitlines()
+    header_idx = -1
+    for i, line in enumerate(lines):
+        if re.match(r"(?i)^\s*GRAPH_EVIDENCE\s*:\s*$", line):
+            header_idx = i
+            break
+    if header_idx == -1:
+        return source
+
+    field_pattern = re.compile(rf"^\s*{re.escape(key)}\s*:\s*.+$", flags=re.IGNORECASE)
+    scale_pattern = re.compile(r"^\s*SCALE\s*:\s*.+$", flags=re.IGNORECASE)
+    insert_idx = None
+    for i in range(header_idx + 1, len(lines)):
+        stripped = lines[i].strip()
+        if re.search(r"(?i)\b(WORK|FINAL ANSWER|\[FINAL\])\b", stripped):
+            break
+        if field_pattern.match(lines[i]):
+            lines[i] = f"  {key}: {value}"
+            return "\n".join(lines)
+        if insert_idx is None and scale_pattern.match(lines[i]):
+            insert_idx = i
+
+    if insert_idx is None:
+        insert_idx = header_idx + 1
+    lines.insert(insert_idx, f"  {key}: {value}")
+    return "\n".join(lines)
+
+
+def _recover_dark_mode_key_point(
+    client: OpenAI,
+    model_name: str,
+    graph_b64: str,
+    timeout: int,
+    existing_key_points: List[str],
+) -> Optional[Dict[str, float]]:
+    if not _should_apply_dark_mode_recovery(existing_key_points):
+        return None
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": DARK_MODE_KEYPOINT_CANDIDATES_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{graph_b64}"}]},
+    ]
+    try:
+        raw = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=max(8, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=180,
+            flow_name="graph_dark_mode_keypoint_candidates",
+        ).strip()
+    except Exception as e:
+        log_telemetry("graph_evidence_dark_mode_recovery_error", {"stage": "api", "error": str(e)})
+        return None
+
+    candidates = _parse_candidate_xy_pairs(raw)
+    if not candidates:
+        return None
+    return _rerank_dark_mode_key_point(candidates)
+
+
+def extract_graph_evidence(
+    image_path: str,
+    client: OpenAI,
+    model_name: str,
+    timeout: int,
+) -> str:
+    try:
+        with Image.open(str(image_path or "")) as im:
+            graph_img = normalize_image_for_api(im.convert("RGB"), get_config())
+        graph_b64 = image_to_base64_png(graph_img)
+    except Exception as e:
+        log_telemetry("graph_evidence_extract_error", {"stage": "image_load", "error": str(e)})
+        return "INVALID_GRAPH"
+
+    is_dark_mode = _is_dark_mode_image(image_path, graph_img)
+    extraction_prompt = GRAPH_EVIDENCE_EXTRACTION_PROMPT
+    if is_dark_mode:
+        extraction_prompt = extraction_prompt + "\n" + DARK_MODE_GRAPH_FORENSIC_APPEND
+
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": extraction_prompt}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{graph_b64}"}]},
+    ]
+    try:
+        extracted = _responses_text(
+            client=client,
+            model_name=model_name,
+            input_payload=payload,
+            timeout=max(8, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=500,
+            flow_name="graph_evidence_extract",
+        ).strip()
+    except Exception as e:
+        log_telemetry("graph_evidence_extract_error", {"stage": "api", "error": str(e)})
+        return "INVALID_GRAPH"
+
+    if not extracted:
+        return "INVALID_GRAPH"
+    if extracted.upper().startswith("INVALID_GRAPH"):
+        return "INVALID_GRAPH"
+    parsed = _extract_graph_evidence_block(extracted)
+    if parsed is None:
+        log_telemetry("graph_evidence_extract_error", {"stage": "parse", "error": "invalid_format"})
+        return "INVALID_GRAPH"
+    if is_dark_mode:
+        recovered = _recover_dark_mode_key_point(
+            client=client,
+            model_name=model_name,
+            graph_b64=graph_b64,
+            timeout=max(8, int(timeout)),
+            existing_key_points=list(parsed.get("key_points", []) or []),
+        )
+        if recovered is not None:
+            keypoint_value = f"(x={_format_coord_value(recovered['x'])}, y={_format_coord_value(recovered['y'])})"
+            updated = _upsert_graph_evidence_field_line(extracted, "KEY_POINTS", keypoint_value)
+            reparsed = _extract_graph_evidence_block(updated)
+            if reparsed is not None:
+                extracted = updated
+            log_telemetry(
+                "graph_evidence_dark_mode_recovery",
+                {
+                    "applied": reparsed is not None,
+                    "keypoint": keypoint_value,
+                    "source": "candidate_rerank",
+                },
+            )
+    return extracted
+
+
+def detect_graph_presence(
+    image_path: str,
+    client: OpenAI,
+    timeout: int,
+) -> Dict[str, str]:
+    try:
+        with Image.open(str(image_path or "")) as im:
+            probe_img = normalize_image_for_api(im.convert("RGB"), get_config())
+        img_b64 = image_to_base64_png(probe_img)
+    except Exception as e:
+        log_telemetry("graph_identifier_error", {"stage": "image_load", "error": str(e)})
+        return {"is_graph": "NO", "reasoning": f"image_load_error: {e}"}
+
+    payload = [
+        {"role": "system", "content": [{"type": "input_text", "text": GRAPH_IDENTIFIER_PROMPT}]},
+        {"role": "user", "content": [{"type": "input_image", "image_url": f"data:image/png;base64,{img_b64}"}]},
+    ]
+    try:
+        raw = _responses_text(
+            client=client,
+            model_name=GRAPH_IDENTIFIER_MODEL,
+            input_payload=payload,
+            timeout=max(6, int(timeout)),
+            temperature=0.0,
+            max_output_tokens=160,
+            flow_name="graph_identifier",
+        ).strip()
+    except Exception as e:
+        log_telemetry("graph_identifier_error", {"stage": "api", "model": GRAPH_IDENTIFIER_MODEL, "error": str(e)})
+        return {"is_graph": "NO", "reasoning": f"api_error: {e}"}
+
+    parsed: Dict[str, Any] = {}
+    raw_text = str(raw or "").strip()
+    try:
+        parsed = json.loads(raw_text)
+    except Exception:
+        # Best-effort recovery if model wraps JSON with prose/code fences.
+        m = re.search(r"\{[\s\S]*\}", raw_text)
+        if m:
+            try:
+                parsed = json.loads(m.group(0))
+            except Exception:
+                parsed = {}
+
+    label_raw = str(parsed.get("is_graph", "") or "").strip().upper()
+    reasoning = str(parsed.get("reasoning", "") or "").strip()
+    if label_raw not in {"YES", "NO"}:
+        normalized = " ".join(raw_text.upper().split())
+        label_raw = "YES" if re.search(r"\bYES\b", normalized) else "NO"
+        if not reasoning:
+            reasoning = "fallback_parse_used"
+
+    if not reasoning:
+        reasoning = "no_reasoning_provided"
+
+    return {"is_graph": label_raw, "reasoning": reasoning}
+
+
+def _prime_graph_reference_with_evidence(
+    client: OpenAI,
+    cfg: Dict[str, Any],
+    meta: Dict[str, Any],
+    img: Image.Image,
+    img_b64: str,
+    summary_model: str,
+    status_start: str,
+    telemetry_event: str,
+) -> None:
+    img_dir = _starred_base_dir()
+    img_path = os.path.join(img_dir, STARRED_IMG_FILE)
+    img.save(img_path, format="PNG")
+    summary = _summarize_visual_reference(
+        client=client,
+        model_name=summary_model,
+        img_b64=img_b64,
+        timeout=int(cfg.get("classify_timeout", 8)),
+    ) or "graph reference"
+
+    meta.update({
+        "reference_active": True,
+        "reference_type": REFERENCE_TYPE_IMG,
+        "text_path": "",
+        "image_path": img_path,
+        "reference_summary": summary,
+    })
+    set_status(status_start)
+    graph_evidence = extract_graph_evidence(
+        image_path=img_path,
+        client=client,
+        model_name=GRAPH_EVIDENCE_EXTRACTION_MODEL,
+        timeout=int(cfg.get("ocr_timeout", 12)),
+    )
+    meta["graph_evidence"] = graph_evidence
+    meta["last_primed_ts"] = int(time.time())
+    save_starred_meta(meta)
+    _set_reference_indicator_from_meta(meta)
+    log_telemetry(
+        telemetry_event,
+        {
+            "evidence_valid": _is_valid_graph_evidence_text(graph_evidence),
+            "summary_length": len(summary),
+            "extraction_model": GRAPH_EVIDENCE_EXTRACTION_MODEL,
+        },
+    )
+    if _is_valid_graph_evidence_text(graph_evidence):
+        set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE READY")
+    else:
+        set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary} | GRAPH EVIDENCE INVALID (fallback enabled)")
+
+
 def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
     t = " ".join(str(ocr_text or "").split())
     low = t.lower()
@@ -307,6 +826,65 @@ def _guess_visual_summary_from_ocr_text(ocr_text: str) -> str:
     return preview_text(t, 140)
 
 
+def _is_gpt5_family_model(model_name: str) -> bool:
+    return str(model_name or "").strip().lower().startswith("gpt-5")
+
+
+def _timeout_type_from_exception(exc: Exception) -> str:
+    msg = str(exc or "").lower()
+    if "connect timeout" in msg:
+        return "connect"
+    if "read timeout" in msg:
+        return "read"
+    if "write timeout" in msg:
+        return "write"
+    if "pool timeout" in msg:
+        return "pool"
+    if "request timed out" in msg or "timed out" in msg or "timeout" in msg:
+        return "request"
+    return ""
+
+
+def _exception_payload(exc: Exception) -> Dict[str, Any]:
+    timeout_type = _timeout_type_from_exception(exc)
+    return {
+        "type": type(exc).__name__,
+        "message": str(exc),
+        "is_timeout": bool(timeout_type),
+        "timeout_type": timeout_type,
+    }
+
+
+def _usage_value(container: Any, key: str) -> Any:
+    if container is None:
+        return None
+    if isinstance(container, dict):
+        return container.get(key)
+    return getattr(container, key, None)
+
+
+def _safe_int_or_none(value: Any) -> Optional[int]:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except Exception:
+        return None
+
+
+def _extract_usage_fields(resp: Any) -> Dict[str, Optional[int]]:
+    usage = _usage_value(resp, "usage")
+    prompt_tokens = _safe_int_or_none(_usage_value(usage, "prompt_tokens"))
+    completion_tokens = _safe_int_or_none(_usage_value(usage, "completion_tokens"))
+    prompt_details = _usage_value(usage, "prompt_tokens_details")
+    cached_tokens = _safe_int_or_none(_usage_value(prompt_details, "cached_tokens"))
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "cached_prompt_tokens": cached_tokens,
+    }
+
+
 def _responses_text(
     client: OpenAI,
     model_name: str,
@@ -314,23 +892,84 @@ def _responses_text(
     timeout: int,
     temperature: float,
     max_output_tokens: int,
+    flow_name: str = "responses",
+    request_id: Optional[str] = None,
 ) -> str:
+    rid = str(request_id or f"{flow_name}-{uuid.uuid4().hex[:10]}")
+    req_started_unix = time.time()
+    api_attempt = 0
+    is_gpt5_family = _is_gpt5_family_model(str(model_name))
+    req_max_output_tokens = max(128, int(max_output_tokens)) if is_gpt5_family else max(16, int(max_output_tokens))
     req = {
         "model": model_name,
         "input": input_payload,
-        "temperature": temperature,
-        "max_output_tokens": max(16, int(max_output_tokens)),
+        "max_output_tokens": req_max_output_tokens,
         "timeout": timeout,
     }
-    try:
-        resp = client.responses.create(**req)
-    except Exception as e:
-        # Some models (for example certain GPT-5 variants) reject temperature.
-        msg = str(e).lower()
-        if "unsupported parameter" in msg and "temperature" in msg:
-            req.pop("temperature", None)
+    if not is_gpt5_family:
+        req["temperature"] = temperature
+    while True:
+        api_attempt += 1
+        call_started_mono = time.monotonic()
+        log_telemetry(
+            "api_request_start",
+            {
+                "request_id": rid,
+                "flow": flow_name,
+                "model": str(model_name),
+                "time_started_unix": req_started_unix,
+                "logical_attempt": 1,
+                "api_attempt": api_attempt,
+                "timeout_sec": timeout,
+                "temperature_included": "temperature" in req,
+            },
+        )
+        try:
             resp = client.responses.create(**req)
-        else:
+            call_elapsed_ms = int((time.monotonic() - call_started_mono) * 1000)
+            usage_fields = _extract_usage_fields(resp)
+            log_telemetry(
+                "api_request_complete",
+                {
+                    "request_id": rid,
+                    "flow": flow_name,
+                    "model": str(model_name),
+                    "time_started_unix": req_started_unix,
+                    "time_completed_unix": time.time(),
+                    "time_to_first_byte_ms": None,
+                    "time_completed_ms": call_elapsed_ms,
+                    "retries": max(0, api_attempt - 1),
+                    "timeout_type": "",
+                    "exception_payload": None,
+                    "prompt_tokens": usage_fields.get("prompt_tokens"),
+                    "completion_tokens": usage_fields.get("completion_tokens"),
+                    "cached_prompt_tokens": usage_fields.get("cached_prompt_tokens"),
+                },
+            )
+            break
+        except Exception as e:
+            call_elapsed_ms = int((time.monotonic() - call_started_mono) * 1000)
+            payload = _exception_payload(e)
+            log_telemetry(
+                "api_request_error",
+                {
+                    "request_id": rid,
+                    "flow": flow_name,
+                    "model": str(model_name),
+                    "time_started_unix": req_started_unix,
+                    "time_completed_unix": time.time(),
+                    "time_to_first_byte_ms": None,
+                    "time_completed_ms": call_elapsed_ms,
+                    "retries": max(0, api_attempt - 1),
+                    "timeout_type": payload.get("timeout_type", ""),
+                    "exception_payload": payload,
+                },
+            )
+            # Some models (for example certain GPT-5 variants) reject temperature.
+            msg = str(e).lower()
+            if "unsupported parameter" in msg and "temperature" in msg and "temperature" in req:
+                req.pop("temperature", None)
+                continue
             raise
     text = getattr(resp, "output_text", None)
     if text:
@@ -359,9 +998,30 @@ def _build_solve_payload(
     reference_active: bool,
     reference_type: Optional[str],
     reference_text: str,
-    reference_img_b64: str
+    reference_img_b64: str,
+    graph_mode: bool = False,
+    graph_evidence_text: Optional[str] = None,
+    enable_graph_evidence_parsing: bool = False,
 ) -> List[Dict[str, Any]]:
-    sys_msg = {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]}
+    cfg = get_config()
+    enable_forced_visual_extraction = bool(cfg.get("ENABLE_FORCED_VISUAL_EXTRACTION", False))
+    has_primary_image_input = isinstance(input_obj, Image.Image)
+    # Use string literal "IMG" to prevent NameError if constant is missing
+    has_active_starred_image = bool(reference_active and reference_type == "IMG")
+    user_text = str(input_obj or "").lower() if isinstance(input_obj, str) else ""
+    has_domain_range_intent = any(
+        cue in user_text
+        for cue in GRAPH_INTENT_CUES
+    )
+    should_force_visual_extraction = bool(
+        enable_forced_visual_extraction
+        and (has_primary_image_input or has_active_starred_image or has_domain_range_intent)
+    )
+
+    sys_prompt = SYSTEM_PROMPT
+    if enable_graph_evidence_parsing:
+        sys_prompt = SYSTEM_PROMPT + "\n" + GRAPH_EVIDENCE_PROMPT_APPEND
+    sys_msg = {"role": "system", "content": [{"type": "input_text", "text": sys_prompt}]}
     user_parts = []
 
     if isinstance(input_obj, Image.Image):
@@ -395,6 +1055,16 @@ def _build_solve_payload(
             user_parts.append({"type": "input_text", "text": merged})
         else:
             user_parts.append({"type": "input_text", "text": cur_text})
+
+    if should_force_visual_extraction:
+        forced_extraction_msg = {"type": "input_text", "text": FORCED_VISUAL_EXTRACTION_INSTRUCTION}
+        user_parts.insert(0, forced_extraction_msg)
+    if graph_mode and _is_valid_graph_evidence_text(graph_evidence_text):
+        graph_ctx = (
+            "GRAPH MODE CACHED EVIDENCE (secondary context only; use for cross-checking graph features):\n"
+            + str(graph_evidence_text).strip()
+        )
+        user_parts.insert(0, {"type": "input_text", "text": graph_ctx})
 
     return [sys_msg, {"role": "user", "content": user_parts}]
 
@@ -549,6 +1219,315 @@ def _section_between(text: str, start_label: str, end_label: Optional[str] = Non
     if not m_end:
         return rest.strip()
     return rest[: m_end.start()].strip()
+
+
+def _looks_like_graph_text(text: str) -> bool:
+    low = str(text or "").lower()
+    return any(
+        cue in low
+        for cue in (
+            "graph",
+            "graphed",
+            "domain",
+            "range",
+            "endpoint",
+            "asymptote",
+            "x-axis",
+            "y-axis",
+        )
+    )
+
+
+def _split_semicolon_values(value: str) -> List[str]:
+    s = str(value or "").strip()
+    if not s:
+        return []
+    low = s.lower()
+    if low in ("none", "n/a", "na", "no", "no asymptotes", "no discontinuities"):
+        return []
+    if ";" in s:
+        return [part.strip() for part in s.split(";") if part.strip()]
+    return [s]
+
+
+def _parse_graph_endpoint(raw_value: str) -> Optional[Dict[str, str]]:
+    m = re.match(
+        r"(?i)^\s*x\s*=\s*([^,]{1,120}?)\s*,\s*y\s*=\s*([^,]{1,120}?)\s*,\s*marker\s*=\s*(open|closed|arrow|unclear)\s*$",
+        str(raw_value or ""),
+    )
+    if not m:
+        return None
+    return {
+        "x": m.group(1).strip(),
+        "y": m.group(2).strip(),
+        "marker": m.group(3).strip().lower(),
+    }
+
+
+def _parse_graph_scale(raw_value: str) -> Optional[Dict[str, str]]:
+    m = re.match(
+        r"(?i)^\s*x_tick\s*=\s*([^,]{1,120}?)\s*,\s*y_tick\s*=\s*([^,]{1,120}?)\s*$",
+        str(raw_value or ""),
+    )
+    if not m:
+        return None
+    return {
+        "x_tick": m.group(1).strip(),
+        "y_tick": m.group(2).strip(),
+    }
+
+
+def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
+    source = str(text or "")
+    m_header = re.search(r"(?im)^\s*GRAPH_EVIDENCE\s*:\s*$", source)
+    if not m_header:
+        if _looks_like_graph_text(source):
+            log_telemetry("graph_evidence_parse_fail", {"reason": "header_missing"})
+        return None
+
+    bounded_slice = source[m_header.end(): m_header.end() + 2000]
+    required = ("LEFT_ENDPOINT", "RIGHT_ENDPOINT", "ASYMPTOTES", "DISCONTINUITIES", "SCALE", "CONFIDENCE")
+    optional = ("INTERCEPTS", "KEY_POINTS")
+    fields: Dict[str, str] = {}
+    optional_fields: Dict[str, str] = {}
+    seen_any = False
+
+    for raw_line in bounded_slice.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            if seen_any:
+                break
+            continue
+        if re.search(r"(?i)\b(WORK|FINAL ANSWER|\[FINAL\])\b", stripped):
+            if len(fields) == len(required):
+                break
+            log_telemetry("graph_evidence_parse_fail", {"reason": "boundary_marker_in_block"})
+            return None
+        m_field = re.match(r"^\s*([A-Z_]+)\s*:\s*(.+?)\s*$", raw_line)
+        if not m_field:
+            if seen_any:
+                break
+            continue
+        key = m_field.group(1).strip().upper()
+        value = m_field.group(2).strip()
+        if key in required:
+            fields[key] = value
+            seen_any = True
+            continue
+        if key in optional:
+            optional_fields[key] = value
+            seen_any = True
+            continue
+        if seen_any:
+            # Tolerate unknown uppercase fields to keep parsing backward-compatible.
+            continue
+
+    missing = [k for k in required if k not in fields]
+    if missing:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "missing_fields", "missing_fields": missing})
+        return None
+
+    left = _parse_graph_endpoint(fields["LEFT_ENDPOINT"])
+    right = _parse_graph_endpoint(fields["RIGHT_ENDPOINT"])
+    scale = _parse_graph_scale(fields["SCALE"])
+    if left is None or right is None:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_endpoint_format"})
+        return None
+    if scale is None:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_scale_format"})
+        return None
+
+    try:
+        confidence = float(fields["CONFIDENCE"])
+    except Exception:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_confidence"})
+        return None
+    if confidence < 0.0 or confidence > 1.0:
+        log_telemetry("graph_evidence_parse_fail", {"reason": "invalid_confidence"})
+        return None
+
+    return {
+        "left_endpoint": left,
+        "right_endpoint": right,
+        "asymptotes": _split_semicolon_values(fields["ASYMPTOTES"]),
+        "discontinuities": _split_semicolon_values(fields["DISCONTINUITIES"]),
+        "intercepts": _split_semicolon_values(optional_fields.get("INTERCEPTS", "none")),
+        "key_points": _split_semicolon_values(optional_fields.get("KEY_POINTS", "none")),
+        "scale": scale,
+        "confidence": confidence,
+    }
+
+
+def _extract_interval_notation(value: str) -> Optional[Dict[str, Any]]:
+    m = re.search(r"([\(\[])\s*([^,\[\]\(\)]+?)\s*,\s*([^,\[\]\(\)]+?)\s*([\)\]])", str(value or ""))
+    if not m:
+        return None
+    lower = m.group(2).strip()
+    upper = m.group(3).strip()
+    return {
+        "raw": m.group(0).strip(),
+        "lower": lower,
+        "upper": upper,
+        "left_inclusive": m.group(1) == "[",
+        "right_inclusive": m.group(4) == "]",
+    }
+
+
+def _extract_interval_for_label(text: str, label: str) -> Optional[Dict[str, Any]]:
+    pattern = rf"(?im)^\s*{re.escape(label)}(?:\s*\([^)]+\))?\s*[:=]\s*([^\n\r]+)"
+    m = re.search(pattern, str(text or ""))
+    if not m:
+        return None
+    return _extract_interval_notation(m.group(1))
+
+
+def _normalize_bound_token(token: str) -> str:
+    return (
+        str(token or "")
+        .strip()
+        .lower()
+        .replace(" ", "")
+        .replace("−", "-")
+        .replace("âˆ’", "-")
+        .replace("∞", "inf")
+        .replace("âˆž", "inf")
+    )
+
+
+def _is_negative_infinity_token(token: str) -> bool:
+    t = _normalize_bound_token(token)
+    return t in ("-inf", "-infinity")
+
+
+def _is_positive_infinity_token(token: str) -> bool:
+    t = _normalize_bound_token(token)
+    return t in ("inf", "+inf", "infinity", "+infinity")
+
+
+def _token_to_float(token: str) -> Optional[float]:
+    t = _normalize_bound_token(token)
+    if not t or _is_negative_infinity_token(t) or _is_positive_infinity_token(t):
+        return None
+    try:
+        if "/" in t:
+            return float(Fraction(t))
+        return float(t)
+    except Exception:
+        return None
+
+
+def _interval_is_bounded(interval_obj: Dict[str, Any], side: str) -> bool:
+    if side == "left":
+        return not _is_negative_infinity_token(str(interval_obj.get("lower", "")))
+    return not _is_positive_infinity_token(str(interval_obj.get("upper", "")))
+
+
+def _interval_includes_value(interval_obj: Dict[str, Any], value_token: str) -> bool:
+    value = _token_to_float(value_token)
+    if value is None:
+        return False
+
+    lower_token = str(interval_obj.get("lower", ""))
+    upper_token = str(interval_obj.get("upper", ""))
+    lower = _token_to_float(lower_token)
+    upper = _token_to_float(upper_token)
+    eps = 1e-9
+
+    if _interval_is_bounded(interval_obj, "left") and lower is not None:
+        if value < lower - eps:
+            return False
+        if abs(value - lower) <= eps and not bool(interval_obj.get("left_inclusive", False)):
+            return False
+
+    if _interval_is_bounded(interval_obj, "right") and upper is not None:
+        if value > upper + eps:
+            return False
+        if abs(value - upper) <= eps and not bool(interval_obj.get("right_inclusive", False)):
+            return False
+
+    return True
+
+
+def _extract_domain_range_intervals(text: str) -> Dict[str, Optional[Dict[str, Any]]]:
+    return {
+        "domain": _extract_interval_for_label(text, "Domain"),
+        "range": _extract_interval_for_label(text, "Range"),
+    }
+
+
+def _interval_signature(interval_obj: Dict[str, Any]) -> tuple[str, str, bool, bool]:
+    return (
+        _normalize_bound_token(str(interval_obj.get("lower", ""))),
+        _normalize_bound_token(str(interval_obj.get("upper", ""))),
+        bool(interval_obj.get("left_inclusive", False)),
+        bool(interval_obj.get("right_inclusive", False)),
+    )
+
+
+def _collect_x_values(items: List[str]) -> List[str]:
+    values: List[str] = []
+    for item in items:
+        for m in re.finditer(r"(?i)\bx\s*=\s*([+-]?(?:(?:\d+/\d+)|\d+(?:\.\d+)?))", str(item or "")):
+            values.append(m.group(1).strip())
+    return values
+
+
+def _validate_work_final_consistency(
+    parsed_evidence: Optional[Dict[str, Any]],
+    work_text: str,
+    final_text: str,
+) -> List[Dict[str, Any]]:
+    if not parsed_evidence:
+        return []
+
+    mismatches: List[Dict[str, Any]] = []
+    work_intervals = _extract_domain_range_intervals(work_text)
+    final_intervals = _extract_domain_range_intervals(final_text)
+    final_domain = final_intervals.get("domain")
+    work_domain = work_intervals.get("domain")
+    work_range = work_intervals.get("range")
+    final_range = final_intervals.get("range")
+
+    left = parsed_evidence.get("left_endpoint", {}) or {}
+    right = parsed_evidence.get("right_endpoint", {}) or {}
+    left_marker = str(left.get("marker", "")).lower()
+    right_marker = str(right.get("marker", "")).lower()
+
+    if final_domain:
+        if left_marker == "open" and bool(final_domain.get("left_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "left", "marker": "open"})
+        if left_marker == "closed" and not bool(final_domain.get("left_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "left", "marker": "closed"})
+        if right_marker == "open" and bool(final_domain.get("right_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "right", "marker": "open"})
+        if right_marker == "closed" and not bool(final_domain.get("right_inclusive", False)):
+            mismatches.append({"mismatch_type": "endpoint_inclusion_conflict", "side": "right", "marker": "closed"})
+        if left_marker == "arrow" and _interval_is_bounded(final_domain, "left"):
+            mismatches.append({"mismatch_type": "arrow_bound_conflict", "side": "left", "marker": "arrow"})
+        if right_marker == "arrow" and _interval_is_bounded(final_domain, "right"):
+            mismatches.append({"mismatch_type": "arrow_bound_conflict", "side": "right", "marker": "arrow"})
+
+    for asym_x in _collect_x_values(list(parsed_evidence.get("asymptotes", []) or [])):
+        if final_domain and _interval_includes_value(final_domain, asym_x):
+            mismatches.append({"mismatch_type": "asymptote_inclusion_conflict", "x": asym_x})
+
+    if work_domain and final_domain and _interval_signature(work_domain) != _interval_signature(final_domain):
+        mismatches.append(
+            {
+                "mismatch_type": "interval_disagreement_domain",
+                "work_interval": str(work_domain.get("raw", "")),
+                "final_interval": str(final_domain.get("raw", "")),
+            }
+        )
+    if work_range and final_range and _interval_signature(work_range) != _interval_signature(final_range):
+        mismatches.append(
+            {
+                "mismatch_type": "interval_disagreement_range",
+                "work_interval": str(work_range.get("raw", "")),
+                "final_interval": str(final_range.get("raw", "")),
+            }
+        )
+    return mismatches
 
 
 def _needs_graph_domain_range_retry(input_obj: Union[str, Image.Image], model_text: str) -> bool:
@@ -756,19 +1735,56 @@ def _maybe_compact_discrete_domain_range(out: str) -> str:
     )
 
 
-def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
+def solve_pipeline(
+    client: OpenAI,
+    input_obj: Union[str, Image.Image],
+    cancel_event: Optional[Any] = None,
+    request_id: Optional[str] = None,
+) -> None:
+    solve_request_id = str(request_id or f"solve-{uuid.uuid4().hex[:10]}")
+
+    def _is_cancelled() -> bool:
+        return bool(cancel_event is not None and getattr(cancel_event, "is_set", lambda: False)())
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "start"})
+        return
+
     cfg = get_config()
     retries = int(cfg.get("retries", 1))
     timeout = int(cfg.get("request_timeout", 25))
-    model_name = cfg.get("model", MODEL)
+    model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
+    if _is_gpt5_family_model(model_name):
+        adjusted_timeout = max(timeout, 35)
+        if adjusted_timeout != timeout:
+            log_telemetry(
+                "model_timeout_adjusted",
+                {"request_id": solve_request_id, "model": model_name, "configured": timeout, "effective": adjusted_timeout},
+            )
+        timeout = adjusted_timeout
     temperature = float(cfg.get("temperature", 0.0))
     max_output_tokens = int(cfg.get("max_output_tokens", 2200))
+    enable_graph_evidence_parsing = bool(cfg.get("ENABLE_GRAPH_EVIDENCE_PARSING", False))
+    enable_consistency_warnings = bool(cfg.get("ENABLE_CONSISTENCY_WARNINGS", False))
+    enable_consistency_blocking = bool(cfg.get("ENABLE_CONSISTENCY_BLOCKING", False))
+    log_telemetry(
+        "solve_request_start",
+        {
+            "request_id": solve_request_id,
+            "model": model_name,
+            "timeout_sec": timeout,
+            "retries": retries,
+            "max_output_tokens": max_output_tokens,
+        },
+    )
 
     meta = load_starred_meta()
     reference_active = bool(meta.get("reference_active", False))
     reference_type = meta.get("reference_type")
     reference_summary = preview_text(str(meta.get("reference_summary", "") or ""), 140)
-    set_reference_active(reference_active)
+    graph_mode = bool(meta.get("graph_mode", False))
+    graph_evidence_text = str(meta.get("graph_evidence") or "").strip()
+    _set_reference_indicator_from_meta(meta)
     reference_text = ""
     reference_img_b64 = ""
 
@@ -778,7 +1794,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
             if not tp or not os.path.exists(tp):
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: missing TEXT source. REF CLEARED")
                 return
             try:
@@ -788,13 +1804,13 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 log_telemetry("ref_text_read_error", {"error": str(e)})
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status(f"REF invalid: TEXT read failed. REF CLEARED. Error: {e}")
                 return
             if not reference_text:
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: empty TEXT source. REF CLEARED")
                 return
             if not reference_summary:
@@ -804,7 +1820,7 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
             if not ip or not os.path.exists(ip):
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status("REF invalid: missing IMG source. REF CLEARED")
                 return
             try:
@@ -815,18 +1831,22 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 log_telemetry("ref_image_read_error", {"error": str(e)})
                 _clear_reference(meta)
                 save_starred_meta(meta)
-                set_reference_active(False)
+                _set_reference_indicator_from_meta(meta)
                 set_status(f"REF invalid: IMG read failed. REF CLEARED. Error: {e}")
                 return
         else:
             _clear_reference(meta)
             save_starred_meta(meta)
-            set_reference_active(False)
+            _set_reference_indicator_from_meta(meta)
             set_status("REF invalid: unknown reference type. REF CLEARED")
             return
 
     if isinstance(input_obj, Image.Image):
         input_obj = normalize_image_for_api(input_obj, cfg)
+
+    graph_evidence_active = bool(graph_mode and _is_valid_graph_evidence_text(graph_evidence_text))
+    if graph_mode and graph_evidence_text and not graph_evidence_active:
+        log_telemetry("graph_evidence_inactive", {"request_id": solve_request_id, "reason": "invalid_or_absent"})
 
     payload = _build_solve_payload(
         input_obj=input_obj,
@@ -834,10 +1854,53 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         reference_type=reference_type,
         reference_text=reference_text,
         reference_img_b64=reference_img_b64,
+        graph_mode=graph_mode,
+        graph_evidence_text=graph_evidence_text if graph_evidence_active else None,
+        enable_graph_evidence_parsing=enable_graph_evidence_parsing,
+    )
+    payload_has_image = False
+    try:
+        user_content = payload[1].get("content", []) if len(payload) > 1 and isinstance(payload[1], dict) else []
+        payload_has_image = any(
+            isinstance(part, dict) and str(part.get("type", "")).strip().lower() == "input_image"
+            for part in user_content
+        )
+    except Exception:
+        payload_has_image = False
+
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
+    image_pixel_count: Optional[int] = None
+    if isinstance(input_obj, Image.Image):
+        try:
+            image_width, image_height = input_obj.size
+            image_pixel_count = int(image_width) * int(image_height)
+        except Exception:
+            image_width = None
+            image_height = None
+            image_pixel_count = None
+    log_telemetry(
+        "solve_image_metadata",
+        {
+            "request_id": solve_request_id,
+            "model": model_name,
+            "input_is_image": isinstance(input_obj, Image.Image),
+            "width": image_width,
+            "height": image_height,
+            "pixel_count": image_pixel_count,
+            "reference_image_included": bool(reference_active and reference_type == REFERENCE_TYPE_IMG and reference_img_b64),
+            "graph_mode": graph_mode,
+            "graph_evidence_included": graph_evidence_active,
+        },
     )
 
     raw_output = ""
+    parsed_graph_evidence: Optional[Dict[str, Any]] = None
     for attempt in range(retries + 1):
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_request", "attempt": attempt + 1})
+            set_status("Solve canceled: model switched.")
+            return
         try:
             candidate = _responses_text(
                 client=client,
@@ -846,20 +1909,38 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
                 timeout=timeout,
                 temperature=temperature,
                 max_output_tokens=max(16, int(max_output_tokens)),
+                flow_name="solve_main",
+                request_id=f"{solve_request_id}-main-{attempt + 1}",
             )
-            if _needs_graph_domain_range_retry(input_obj, candidate):
-                retry_payload = _with_graph_domain_range_retry_hint(payload)
-                log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
-                retry_output = _responses_text(
-                    client=client,
-                    model_name=model_name,
-                    input_payload=retry_payload,
-                    timeout=timeout,
-                    temperature=temperature,
-                    max_output_tokens=max(16, int(max_output_tokens)),
-                )
-                if retry_output:
-                    candidate = retry_output
+            if enable_graph_evidence_parsing:
+                parsed_graph_evidence = _extract_graph_evidence_block(candidate)
+            # Graph retry is intentionally disabled:
+            # if _needs_graph_domain_range_retry(input_obj, candidate):
+            #     retry_payload = _with_graph_domain_range_retry_hint(payload)
+            #     log_telemetry(
+            #         "solve_retry_metadata",
+            #         {
+            #             "request_id": solve_request_id,
+            #             "attempt": attempt + 1,
+            #             "retry_mode": "with_image",
+            #             "retry_reason": "graph_domain_range_weak_marker_evidence",
+            #         },
+            #     )
+            #     log_telemetry("graph_domain_range_retry", {"attempt": attempt + 1, "reason": "weak_marker_evidence"})
+            #     retry_output = _responses_text(
+            #         client=client,
+            #         model_name=model_name,
+            #         input_payload=retry_payload,
+            #         timeout=timeout,
+            #         temperature=temperature,
+            #         max_output_tokens=max(16, int(max_output_tokens)),
+            #         flow_name="solve_graph_retry",
+            #         request_id=f"{solve_request_id}-graph-{attempt + 1}",
+            #     )
+            #     if retry_output:
+            #         candidate = retry_output
+            #         if enable_graph_evidence_parsing:
+            #             parsed_graph_evidence = _extract_graph_evidence_block(candidate)
 
             if candidate and candidate.strip():
                 raw_output = candidate
@@ -867,13 +1948,45 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 
             log_telemetry("solve_empty_response_retry", {"attempt": attempt + 1, "model": str(model_name)})
             if attempt == retries:
+                log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "empty_response"})
                 set_status("Empty model response.")
                 return
+            log_telemetry(
+                "solve_retry_metadata",
+                {
+                    "request_id": solve_request_id,
+                    "attempt": attempt + 1,
+                    "retry_mode": "with_image" if payload_has_image else "text_only",
+                    "retry_reason": "empty_response",
+                },
+            )
         except Exception as e:
+            if _is_cancelled():
+                log_telemetry(
+                    "solve_cancelled",
+                    {"request_id": solve_request_id, "stage": "exception", "attempt": attempt + 1, "error": str(e)},
+                )
+                set_status("Solve canceled: model switched.")
+                return
             log_telemetry("solve_retry", {"attempt": attempt + 1, "error": str(e)})
             if attempt == retries:
+                log_telemetry("solve_request_failed", {"request_id": solve_request_id, "reason": "exception", "error": str(e)})
                 set_status(f"Solve failed: {e}")
                 return
+            log_telemetry(
+                "solve_retry_metadata",
+                {
+                    "request_id": solve_request_id,
+                    "attempt": attempt + 1,
+                    "retry_mode": "with_image" if payload_has_image else "text_only",
+                    "retry_reason": "exception",
+                },
+            )
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "post_request"})
+        set_status("Solve canceled: model switched.")
+        return
 
     out = clean_output(apply_safe_symbols(raw_output)).strip()
     # Normalize inline FINAL ANSWER first so downstream section checks are stable.
@@ -885,25 +1998,63 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
         set_status("Model returned empty output.")
         return
 
+    ref_prefix = ""
     if reference_active and reference_type in (REFERENCE_TYPE_IMG, REFERENCE_TYPE_TEXT):
-        if reference_summary:
-            out = f"* REF {reference_type}: {reference_summary}\n{out}"
-        else:
-            out = f"* REF {reference_type}\n{out}"
+        effective_summary = reference_summary
+        if not effective_summary:
+            effective_summary = "visual reference" if reference_type == REFERENCE_TYPE_IMG else "text reference"
+        ref_prefix = f"* REF {reference_type}: {effective_summary}"
+        out = f"{ref_prefix}\n{out}"
 
     final_text = _extract_final_answer_text(out)
+    if enable_consistency_warnings and parsed_graph_evidence is not None:
+        work_text = _section_between(out, "WORK", "FINAL ANSWER")
+        final_section = _section_between(out, "FINAL ANSWER")
+        mismatches = _validate_work_final_consistency(parsed_graph_evidence, work_text, final_section)
+        for mismatch in mismatches:
+            payload = {
+                "request_id": solve_request_id,
+                "model": model_name,
+                "confidence": parsed_graph_evidence.get("confidence"),
+            }
+            payload.update(mismatch)
+            log_telemetry("validator_mismatch_warning", payload)
+        if mismatches and enable_consistency_blocking:
+            # Phase 1 is warning-only even when the future blocking flag is set.
+            log_telemetry(
+                "validator_blocking_phase1_noop",
+                {"request_id": solve_request_id, "model": model_name, "mismatch_count": len(mismatches)},
+            )
+    if final_text and ref_prefix:
+        # Keep parsed answer first so users see result immediately; append REF context at the bottom.
+        final_text = f"{final_text}\n{ref_prefix}"
+
+    if _is_cancelled():
+        log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_clipboard"})
+        set_status("Solve canceled: model switched.")
+        return
+
     if final_text:
         # Entry 1: original full result. Entry 2: parsed final-answer text (no header).
         settle_sec = float(cfg.get("clipboard_history_settle_sec", 0.6))
         wrote_full = _clipboard_write_retry(out)
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "between_clipboard_writes"})
+            set_status("Solve canceled: model switched.")
+            return
         if wrote_full:
             time.sleep(max(0.25, settle_sec))
+        if _is_cancelled():
+            log_telemetry("solve_cancelled", {"request_id": solve_request_id, "stage": "pre_final_clipboard"})
+            set_status("Solve canceled: model switched.")
+            return
         wrote_final = _clipboard_write_retry(final_text)
         ok = wrote_full and wrote_final
     else:
         ok = _clipboard_write_retry(out)
     if ok:
         mark_prompt_success()
+        log_telemetry("solve_request_complete", {"request_id": solve_request_id, "model": model_name})
     notify_on_complete = bool(cfg.get("notify_on_complete", False))
     if ok and notify_on_complete:
         set_status("Solved → copied to clipboard")
@@ -914,13 +2065,16 @@ def solve_pipeline(client: OpenAI, input_obj: Union[str, Image.Image]) -> None:
 def toggle_star_worker(client: OpenAI) -> None:
     cfg = get_config()
     model_name = str(cfg.get("model", MODEL) or MODEL).strip() or MODEL
+    reference_helper_model = str(cfg.get("reference_summary_model", "gpt-4o-mini") or "").strip() or "gpt-4o-mini"
+    ref_model = reference_helper_model if _is_gpt5_family_model(model_name) else model_name
     meta = load_starred_meta()
+    graph_mode = bool(meta.get("graph_mode", False))
 
     # Strict toggle behavior: active -> clear only (no parse/overwrite in same action).
     if bool(meta.get("reference_active", False)):
         _clear_reference(meta)
         save_starred_meta(meta)
-        set_reference_active(False)
+        _set_reference_indicator_from_meta(meta)
         set_status("REF CLEARED")
         return
 
@@ -932,11 +2086,77 @@ def toggle_star_worker(client: OpenAI) -> None:
     if err is not None:
         log_telemetry("star_clipboard_read_error", {"error": str(err)})
 
+    # Graph mode path: next REF prime must be treated as graph image.
+    if graph_mode:
+        if not isinstance(raw_clip, Image.Image):
+            set_status("Graph Mode ON: copy a graph image before priming REF.")
+            return
+        try:
+            img = normalize_image_for_api(raw_clip, cfg)
+            img_b64 = image_to_base64_png(img)
+            _prime_graph_reference_with_evidence(
+                client=client,
+                cfg=cfg,
+                meta=meta,
+                img=img,
+                img_b64=img_b64,
+                summary_model=ref_model,
+                status_start="Graph Mode ON: extracting graph evidence...",
+                telemetry_event="graph_mode_ref_primed",
+            )
+            return
+        except Exception as e:
+            log_telemetry("graph_mode_prime_error", {"error": str(e)})
+            set_status(f"Graph mode prime failed: {e}")
+            return
+
     # image case
     if isinstance(raw_clip, Image.Image):
         try:
             img = normalize_image_for_api(raw_clip, cfg)
             img_b64 = image_to_base64_png(img)
+            auto_graph_detect_ref_prime = bool(cfg.get("ENABLE_AUTO_GRAPH_DETECT_REF_PRIME", False))
+
+            if auto_graph_detect_ref_prime:
+                probe_path = os.path.join(_starred_base_dir(), f".graph_probe_{uuid.uuid4().hex[:10]}.png")
+                try:
+                    img.save(probe_path, format="PNG")
+                    detection = detect_graph_presence(
+                        image_path=probe_path,
+                        client=client,
+                        timeout=int(cfg.get("classify_timeout", 8)),
+                    )
+                finally:
+                    try:
+                        if os.path.exists(probe_path):
+                            os.remove(probe_path)
+                    except Exception:
+                        pass
+                detection_label = str(detection.get("is_graph", "NO") or "NO").strip().upper()
+                detection_reason = str(detection.get("reasoning", "") or "")
+                detection_hit = detection_label == "YES"
+                log_telemetry(
+                    "graph_identifier_decision",
+                    {
+                        "enabled": True,
+                        "model": GRAPH_IDENTIFIER_MODEL,
+                        "result": detection_label,
+                        "reasoning": detection_reason,
+                        "decision": "graph_extract" if detection_hit else "normal_ref",
+                    },
+                )
+                if detection_hit:
+                    _prime_graph_reference_with_evidence(
+                        client=client,
+                        cfg=cfg,
+                        meta=meta,
+                        img=img,
+                        img_b64=img_b64,
+                        summary_model=ref_model,
+                        status_start="Graph auto-detected: extracting graph evidence...",
+                        telemetry_event="graph_auto_ref_primed",
+                    )
+                    return
 
             classify_payload = [
                 {"role": "system", "content": [{"type": "input_text", "text": STAR_CLASSIFY_PROMPT}]},
@@ -944,18 +2164,19 @@ def toggle_star_worker(client: OpenAI) -> None:
             ]
             label_raw = _responses_text(
                 client=client,
-                model_name=model_name,
+                model_name=ref_model,
                 input_payload=classify_payload,
                 timeout=int(cfg.get("classify_timeout", 8)),
                 temperature=0.0,
                 max_output_tokens=32,
+                flow_name="ref_classify",
             ).strip()
             label = _normalize_star_label(label_raw)
 
             # Fallback 1: retry classifier with a stable vision model if primary label is empty/ambiguous.
             if not label:
                 fallback_model = str(cfg.get("reference_classifier_model", "gpt-4o-mini") or "").strip()
-                if fallback_model and fallback_model != model_name:
+                if fallback_model and fallback_model != ref_model:
                     try:
                         fallback_raw = _responses_text(
                             client=client,
@@ -964,6 +2185,7 @@ def toggle_star_worker(client: OpenAI) -> None:
                             timeout=int(cfg.get("classify_timeout", 8)),
                             temperature=0.0,
                             max_output_tokens=32,
+                            flow_name="ref_classify_fallback",
                         ).strip()
                         label = _normalize_star_label(fallback_raw)
                         if label:
@@ -989,11 +2211,12 @@ def toggle_star_worker(client: OpenAI) -> None:
                 ]
                 ocr_text_fallback = _responses_text(
                     client=client,
-                    model_name=model_name,
+                    model_name=ref_model,
                     input_payload=ocr_probe_payload,
                     timeout=int(cfg.get("ocr_timeout", 12)),
                     temperature=0.0,
                     max_output_tokens=1200,
+                    flow_name="ref_ocr_probe",
                 ).strip()
                 label = "TEXTUAL" if ocr_text_fallback else "VISUAL"
                 log_telemetry("ref_classifier_empty_fallback", {"resolved_label": label, "model": model_name})
@@ -1010,11 +2233,12 @@ def toggle_star_worker(client: OpenAI) -> None:
                     ]
                     ocr_text = _responses_text(
                         client=client,
-                        model_name=model_name,
+                        model_name=ref_model,
                         input_payload=ocr_payload,
                         timeout=int(cfg.get("ocr_timeout", 12)),
                         temperature=0.0,
                         max_output_tokens=1200,
+                        flow_name="ref_ocr",
                     ).strip()
                 if not ocr_text:
                     set_status("REF assign failed: OCR returned empty text")
@@ -1031,18 +2255,20 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "text_path": text_path,
                     "image_path": "",
                     "reference_summary": summary,
+                    "graph_evidence": None,
+                    "last_primed_ts": 0,
                 })
                 save_starred_meta(meta)
-                set_reference_active(True)
+                _set_reference_indicator_from_meta(meta)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
-                set_status(f"REF SET TEXT ASSUMED: {summary}")
+                set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
             elif label == "VISUAL":
                 img_dir = _starred_base_dir()
                 img_path = os.path.join(img_dir, STARRED_IMG_FILE)
                 img.save(img_path, format="PNG")
                 summary = _summarize_visual_reference(
                     client=client,
-                    model_name=model_name,
+                    model_name=ref_model,
                     img_b64=img_b64,
                     timeout=int(cfg.get("classify_timeout", 8)),
                 )
@@ -1091,11 +2317,13 @@ def toggle_star_worker(client: OpenAI) -> None:
                     "text_path": "",
                     "image_path": img_path,
                     "reference_summary": summary,
+                    "graph_evidence": None,
+                    "last_primed_ts": 0,
                 })
                 save_starred_meta(meta)
-                set_reference_active(True)
+                _set_reference_indicator_from_meta(meta)
                 log_telemetry("ref_set", {"type": REFERENCE_TYPE_IMG, "summary_length": len(summary)})
-                set_status(f"REF SET IMG ASSUMED: {summary}")
+                set_status(f"* REF {REFERENCE_TYPE_IMG}: {summary}")
             else:
                 # Guard path should be unreachable due fallback logic above.
                 set_status(f"REF assign failed: classifier returned '{label_raw or 'EMPTY'}'")
@@ -1122,10 +2350,12 @@ def toggle_star_worker(client: OpenAI) -> None:
             "text_path": text_path,
             "image_path": "",
             "reference_summary": summary,
+            "graph_evidence": None,
+            "last_primed_ts": 0,
         })
         save_starred_meta(meta)
-        set_reference_active(True)
+        _set_reference_indicator_from_meta(meta)
         log_telemetry("ref_set", {"type": REFERENCE_TYPE_TEXT, "summary_length": len(summary)})
-        set_status(f"REF SET TEXT ASSUMED: {summary}")
+        set_status(f"* REF {REFERENCE_TYPE_TEXT}: {summary}")
     else:
         set_status("REF assign failed: no image/text in clipboard")

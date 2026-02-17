@@ -1,0 +1,11 @@
+WORK:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-4, y=0, marker=open
+  RIGHT_ENDPOINT: x=4, y=0, marker=open
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1, y_tick=1
+  CONFIDENCE: 0.92
+FINAL ANSWER:
+Domain: (-4, 4)
+Range: [0, 9]

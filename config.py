@@ -6,11 +6,13 @@ from typing import Dict, Any, Optional
 
 APP_NAME = "SunnyNotSummer"
 MODEL = "gpt-4o"
+REMOVED_MODELS = {"gpt-5"}
+REMOVED_MODEL_FALLBACK = "gpt-5.2"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "api_key": "",
     "model": MODEL,
-    "available_models": [MODEL, "gpt-4o-mini", "gpt-5-mini", "gpt-5", "gpt-5.2"],
+    "available_models": [MODEL, "gpt-4o-mini", "gpt-5-mini", "gpt-5.2"],
     "temperature": 0.0,
     "request_timeout": 25,
     "retries": 1,
@@ -29,6 +31,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # behavior
     "debug": False,
     "telemetry_file": "solver_telemetry.jsonl",
+    "ENABLE_GRAPH_EVIDENCE_PARSING": False,
+    "ENABLE_CONSISTENCY_WARNINGS": False,
+    "ENABLE_CONSISTENCY_BLOCKING": False,
+    "ENABLE_FORCED_VISUAL_EXTRACTION": False,
+    "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": False,
+    "graph_identifier_min_confidence": 0.75,
+    "graph_mode": False,
+    "graph_evidence": None,
+    "last_primed_ts": 0,
 
     # debounce
     "hotkey_debounce_ms": 250,
@@ -64,6 +75,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(cfg or {})
 
     model_name = str(normalized.get("model", MODEL) or MODEL).strip() or MODEL
+    if model_name.lower() in REMOVED_MODELS:
+        model_name = REMOVED_MODEL_FALLBACK
     if normalized.get("model") != model_name:
         normalized["model"] = model_name
 
@@ -72,6 +85,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(available_models_raw, list):
         for raw in available_models_raw:
             m = str(raw or "").strip()
+            if m.lower() in REMOVED_MODELS:
+                continue
             if m and m not in available_models:
                 available_models.append(m)
 
@@ -84,6 +99,8 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     # Ensure default selectable models are always present for tray/runtime switching.
     for default_model in DEFAULT_CONFIG.get("available_models", []):
         m = str(default_model or "").strip()
+        if m.lower() in REMOVED_MODELS:
+            continue
         if m and m not in available_models:
             available_models.append(m)
 
@@ -157,6 +174,75 @@ def _normalize_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
         reference_summary_model = str(DEFAULT_CONFIG["reference_summary_model"])
     if normalized.get("reference_summary_model") != reference_summary_model:
         normalized["reference_summary_model"] = reference_summary_model
+
+    # Legacy key cleanup: graph identifier model is now hard-pinned in runtime.
+    if "graph_identifier_model" in normalized:
+        normalized.pop("graph_identifier_model", None)
+
+    graph_evidence_parsing = bool(
+        normalized.get("ENABLE_GRAPH_EVIDENCE_PARSING", DEFAULT_CONFIG["ENABLE_GRAPH_EVIDENCE_PARSING"])
+    )
+    if normalized.get("ENABLE_GRAPH_EVIDENCE_PARSING") != graph_evidence_parsing:
+        normalized["ENABLE_GRAPH_EVIDENCE_PARSING"] = graph_evidence_parsing
+
+    consistency_warnings = bool(
+        normalized.get("ENABLE_CONSISTENCY_WARNINGS", DEFAULT_CONFIG["ENABLE_CONSISTENCY_WARNINGS"])
+    )
+    if normalized.get("ENABLE_CONSISTENCY_WARNINGS") != consistency_warnings:
+        normalized["ENABLE_CONSISTENCY_WARNINGS"] = consistency_warnings
+
+    consistency_blocking = bool(
+        normalized.get("ENABLE_CONSISTENCY_BLOCKING", DEFAULT_CONFIG["ENABLE_CONSISTENCY_BLOCKING"])
+    )
+    if normalized.get("ENABLE_CONSISTENCY_BLOCKING") != consistency_blocking:
+        normalized["ENABLE_CONSISTENCY_BLOCKING"] = consistency_blocking
+
+    forced_visual_extraction = bool(
+        normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION", DEFAULT_CONFIG["ENABLE_FORCED_VISUAL_EXTRACTION"])
+    )
+    if normalized.get("ENABLE_FORCED_VISUAL_EXTRACTION") != forced_visual_extraction:
+        normalized["ENABLE_FORCED_VISUAL_EXTRACTION"] = forced_visual_extraction
+
+    auto_graph_detect_ref_prime = bool(
+        normalized.get(
+            "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME",
+            DEFAULT_CONFIG["ENABLE_AUTO_GRAPH_DETECT_REF_PRIME"],
+        )
+    )
+    if normalized.get("ENABLE_AUTO_GRAPH_DETECT_REF_PRIME") != auto_graph_detect_ref_prime:
+        normalized["ENABLE_AUTO_GRAPH_DETECT_REF_PRIME"] = auto_graph_detect_ref_prime
+
+    try:
+        graph_identifier_min_confidence = float(
+            normalized.get(
+                "graph_identifier_min_confidence",
+                DEFAULT_CONFIG["graph_identifier_min_confidence"],
+            )
+        )
+    except Exception:
+        graph_identifier_min_confidence = float(DEFAULT_CONFIG["graph_identifier_min_confidence"])
+    graph_identifier_min_confidence = max(0.0, min(1.0, graph_identifier_min_confidence))
+    if normalized.get("graph_identifier_min_confidence") != graph_identifier_min_confidence:
+        normalized["graph_identifier_min_confidence"] = graph_identifier_min_confidence
+
+    graph_mode = bool(normalized.get("graph_mode", DEFAULT_CONFIG["graph_mode"]))
+    if normalized.get("graph_mode") != graph_mode:
+        normalized["graph_mode"] = graph_mode
+
+    graph_evidence = normalized.get("graph_evidence", DEFAULT_CONFIG["graph_evidence"])
+    if graph_evidence is not None and not isinstance(graph_evidence, str):
+        graph_evidence = None
+    if isinstance(graph_evidence, str):
+        graph_evidence = graph_evidence.strip() or None
+    if normalized.get("graph_evidence") != graph_evidence:
+        normalized["graph_evidence"] = graph_evidence
+
+    try:
+        last_primed_ts = int(normalized.get("last_primed_ts", DEFAULT_CONFIG["last_primed_ts"]) or 0)
+    except Exception:
+        last_primed_ts = int(DEFAULT_CONFIG["last_primed_ts"])
+    if normalized.get("last_primed_ts") != last_primed_ts:
+        normalized["last_primed_ts"] = last_primed_ts
     return normalized
 
 
