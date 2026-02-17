@@ -92,6 +92,8 @@
 - `detect_graph_presence(image_path, ...)` runs only in REF image priming flow.
 - Scout call is pinned to `gpt-4o-mini` and returns binary `YES/NO`.
 - `YES` routes to graph-evidence extraction; `NO` falls back to normal REF classification.
+- Validation harness: `tests/verify_classifier.py` supports sequential ground-truth mode (`max_workers=1`) with 429 exponential backoff and no exclusion scoring.
+- Latest benchmark: `tests/GRAPH_CHECKER` full set achieved 103/103 (100.00%) in sequential no-exclusion mode; positive-only subset is maintained at `tests/GRAPH_CHECKER/graph_only/` (38 images).
 
 ### VIII. RETRY SYSTEM
 

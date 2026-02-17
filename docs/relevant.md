@@ -1,3 +1,22 @@
+## 2026-02-17 — Graph Presence Classifier Ground-Truth Pass (Complete)
+
+Description:
+Executed full sequential validation for graph presence classification with no exclusion scoring.
+
+Validation Mode:
+- `tests/verify_classifier.py` in single-thread mode (`max_workers=1`)
+- 429 retry handling with 10-second exponential backoff
+- Every file counted in final accuracy math
+
+Result:
+- Dataset: `tests/GRAPH_CHECKER` (103 images)
+- Outcome: 103 correct / 0 incorrect
+- Accuracy: 100.00%
+- Run artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`
+
+Dataset Note:
+- Positive-only subset is now available at `tests/GRAPH_CHECKER/graph_only/` (38 graph images).
+
 ## 2026-02-17 — Unified REF Graph Mode Runtime Implemented
 
 Description:

@@ -1,3 +1,18 @@
+## 2026-02-17 — Ground-Truth Classifier Validation (Sequential, No Exclusions)
+
+- Updated `tests/verify_classifier.py` to support ground-truth validation mode:
+  - single-threaded execution (`max_workers=1`)
+  - aggressive 429 retry backoff (10s exponential)
+  - no exclusion math; every image is counted in final accuracy
+- Completed full dataset run on `tests/GRAPH_CHECKER`:
+  - total images: 103
+  - correct: 103
+  - incorrect: 0
+  - final accuracy: 100.00%
+- Logged run artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`.
+- Added/confirmed positive-only benchmark subset: `tests/GRAPH_CHECKER/graph_only/` (38 graph images).
+- Scope note: this validates graph-presence classification only; solve output contract (`WORK:` / `FINAL ANSWER:`), normalization, retry policy, and clipboard flow are unchanged.
+
 ## 2026-02-17 — Intelligent Pipeline Reliability Pass
 
 - Added three-tier status/error fanout:

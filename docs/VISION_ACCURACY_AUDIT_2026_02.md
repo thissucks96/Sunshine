@@ -1,3 +1,10 @@
+0 Latest Classifier Benchmark Checkpoint (2026-02-17)
+- Sequential ground-truth run completed with `tests/verify_classifier.py` (`max_workers=1`, no exclusion scoring, 429 exponential backoff).
+- Dataset: `tests/GRAPH_CHECKER` (103 images).
+- Result: 103/103 correct (100.00%).
+- Run artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`.
+- Positive-only subset for targeted runs: `tests/GRAPH_CHECKER/graph_only/` (38 graph images).
+
 1 Vision Data Flow
 1. Image capture starts in `main.py:444` (`def worker`). The worker reads clipboard via `safe_clipboard_read()`.
    Anchor: `main.py:463`, search token `raw_clip, _ = safe_clipboard_read()`.

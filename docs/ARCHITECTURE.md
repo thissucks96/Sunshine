@@ -69,8 +69,14 @@ User hotkey or tray action
 `tests/test_model5_and_clipboard.py`: Regression tests around GPT-5-family request shaping, cancel/write ordering, REF prefixing, and status clipboard mirroring.
 `tests/test_model_switch_cancel_order.py`: Ensures active solve cancellation occurs before model probe during model change.
 `tests/test_config_model_migration.py`: Ensures exact `gpt-5` is migrated/removed in normalized config.
+`tests/verify_classifier.py`: Graph-presence classifier harness (supports sequential ground-truth validation mode with 429 backoff and no exclusion scoring).
+`tests/GRAPH_CHECKER/`: Full graph/non-graph benchmark corpus for classifier validation.
+`tests/GRAPH_CHECKER/graph_only/`: Positive-only benchmark subset (38 graph images).
 `docs/`: Architecture, roadmap, and audit snapshots.
 `REFERENCE_IMG/`, `STARRED.txt`, `STARRED_META.json`: Reference assets and metadata used by STAR/REF mode.
+
+Classifier validation checkpoint:
+- Sequential run on full `tests/GRAPH_CHECKER/` corpus recorded 103/103 correct (100.00%), artifact: `tests/GRAPH_CHECKER/classifier_results_20260216_185458.log`.
 
 4 Runtime Flow Walkthrough
 Initialization
