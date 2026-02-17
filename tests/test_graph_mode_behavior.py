@@ -124,8 +124,6 @@ class GraphModeBehaviorTests(unittest.TestCase):
         cfg = {
             "model": "gpt-4o-mini",
             "reference_summary_model": "gpt-4o-mini",
-            "graph_identifier_model": "gpt-4o-mini",
-            "graph_identifier_min_confidence": 0.75,
             "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": True,
             "classify_timeout": 8,
             "ocr_timeout": 12,
@@ -141,7 +139,7 @@ class GraphModeBehaviorTests(unittest.TestCase):
         ), patch.object(
             llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
         ), patch.object(
-            llm_pipeline, "detect_graph_presence", return_value={"is_graph": True, "confidence": 0.92, "reason": "axes"}
+            llm_pipeline, "detect_graph_presence", return_value="YES"
         ) as mock_detect, patch.object(
             llm_pipeline, "_summarize_visual_reference", return_value="graph panel reference"
         ), patch.object(
@@ -152,17 +150,15 @@ class GraphModeBehaviorTests(unittest.TestCase):
             llm_pipeline.toggle_star_worker(client=object())
             updated = llm_pipeline.load_starred_meta()
 
-        self.assertEqual(mock_detect.call_args.kwargs.get("model_name"), "gpt-4o-mini")
+        self.assertTrue(str(mock_detect.call_args.kwargs.get("image_path", "")).endswith(".png"))
         self.assertEqual(mock_extract.call_args.kwargs.get("model_name"), "gpt-5.2")
         self.assertEqual(updated.get("reference_type"), llm_pipeline.REFERENCE_TYPE_IMG)
         self.assertEqual(updated.get("graph_evidence"), _VALID_GRAPH_EVIDENCE.strip())
 
-    def test_auto_graph_identifier_falls_back_to_normal_ref_when_below_threshold(self):
+    def test_auto_graph_identifier_falls_back_to_normal_ref_when_no(self):
         cfg = {
             "model": "gpt-4o-mini",
             "reference_summary_model": "gpt-4o-mini",
-            "graph_identifier_model": "gpt-4o-mini",
-            "graph_identifier_min_confidence": 0.90,
             "ENABLE_AUTO_GRAPH_DETECT_REF_PRIME": True,
             "classify_timeout": 8,
             "ocr_timeout": 12,
@@ -178,7 +174,7 @@ class GraphModeBehaviorTests(unittest.TestCase):
         ), patch.object(
             llm_pipeline, "safe_clipboard_read", return_value=(graph_img, None)
         ), patch.object(
-            llm_pipeline, "detect_graph_presence", return_value={"is_graph": True, "confidence": 0.55, "reason": "weak"}
+            llm_pipeline, "detect_graph_presence", return_value="NO"
         ), patch.object(
             llm_pipeline, "_responses_text", return_value="VISUAL"
         ), patch.object(
@@ -194,6 +190,24 @@ class GraphModeBehaviorTests(unittest.TestCase):
         self.assertIsNone(updated.get("graph_evidence"))
         self.assertEqual(updated.get("reference_type"), llm_pipeline.REFERENCE_TYPE_IMG)
         self.assertFalse(mock_extract.called)
+
+    def test_detect_graph_presence_uses_fixed_model_and_binary_output(self):
+        cfg = {"max_image_side": 4096, "max_image_pixels": 16_000_000}
+        with tempfile.TemporaryDirectory() as td:
+            img_path = f"{td}\\probe.png"
+            Image.new("RGB", (8, 8), "white").save(img_path, format="PNG")
+            with patch.object(
+                llm_pipeline, "get_config", return_value=cfg
+            ), patch.object(
+                llm_pipeline, "_responses_text", return_value="YES"
+            ) as mock_resp:
+                result = llm_pipeline.detect_graph_presence(
+                    image_path=img_path,
+                    client=object(),
+                    timeout=8,
+                )
+        self.assertEqual(result, "YES")
+        self.assertEqual(mock_resp.call_args.kwargs.get("model_name"), "gpt-4o-mini")
 
 
 if __name__ == "__main__":

@@ -165,7 +165,7 @@ class ModelAndClipboardTests(unittest.TestCase):
         self.assertIn("SOURCE: set_status", payload)
         self.assertIn(f"MESSAGE: {unique_message}", payload)
 
-    def test_suppressed_duplicate_status_does_not_rewrite_clipboard(self):
+    def test_duplicate_status_still_notifies_and_rewrites_clipboard(self):
         fake_icon = _FakeNotifyIcon()
         writes = []
 
@@ -196,8 +196,8 @@ class ModelAndClipboardTests(unittest.TestCase):
             utils.set_status("duplicate status")
             utils.set_status("duplicate status")
 
-        self.assertEqual(len(fake_icon.calls), 1)
-        self.assertEqual(len(writes), 1)
+        self.assertEqual(len(fake_icon.calls), 2)
+        self.assertEqual(len(writes), 2)
 
     def test_cancelled_between_clipboard_writes_skips_final_write(self):
         writes = []

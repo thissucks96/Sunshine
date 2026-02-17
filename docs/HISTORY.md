@@ -1,3 +1,21 @@
+## 2026-02-17 — Intelligent Pipeline Reliability Pass
+
+- Added three-tier status/error fanout:
+  - clipboard mirror
+  - tray/window notification path
+  - dated root activity log (`app_activity.log`)
+- Added startup model health probes:
+  - selected solve model is probed on startup
+  - hardcoded graph-extraction model (`gpt-5.2`) is probed on startup
+  - warning statuses are emitted when either probe fails
+- Kept model-switch safety behavior: tray model changes are probe-gated and blocked on failure.
+- Refined REF-prime scout classifier:
+  - `detect_graph_presence(image_path, ...)` now performs binary `YES/NO` graph detection
+  - classifier model for this call is pinned to `gpt-4o-mini`
+  - integration remains restricted to `toggle_star_worker` (reference image priming path)
+- Added standalone classifier verification script: `tests/verify_classifier.py` (logs YES/NO only; no extraction).
+- Refactored `save_starred_meta` to atomic write (`.tmp` + `os.replace`) to reduce metadata corruption risk.
+
 ## 2026-02-17 — Add REF-Prime Graph Identifier Function (Flag-Gated)
 
 - Added graph identifier function path in `toggle_star_worker` for image REF priming only, behind `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` (default `False`).

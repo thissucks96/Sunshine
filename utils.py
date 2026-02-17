@@ -31,6 +31,8 @@ _LAST_RENDER_SIGNATURE = ""
 
 _PROMPT_SUCCESS_PULSE_SEC = 0.8
 _VALID_NOTIFICATION_TYPES = {"STATUS", "ERROR", "INFO"}
+_ACTIVITY_LOG_LOCK = threading.Lock()
+_ACTIVITY_LOG_FILE = "app_activity.log"
 
 
 def set_app_icon(icon) -> None:
@@ -125,6 +127,19 @@ def _build_notification_clipboard_payload(message: str, level: str, source: str)
     )
 
 
+def log_activity(message: str, level: str = "INFO", source: str = "unknown") -> None:
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"{ts} | {str(level or 'INFO').upper()} | {str(source or 'unknown')} | {str(message or '')}\n"
+    path = os.path.join(app_home_dir(), _ACTIVITY_LOG_FILE)
+    try:
+        with _ACTIVITY_LOG_LOCK:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(line)
+    except Exception:
+        # Logging failures must never interrupt runtime behavior.
+        pass
+
+
 def mirror_notification_to_clipboard(message: str, level: str, source: str) -> bool:
     payload = _build_notification_clipboard_payload(message=message, level=level, source=source)
     ok = safe_clipboard_write(payload)
@@ -214,10 +229,16 @@ def mark_prompt_success() -> None:
     threading.Thread(target=_clear_prompt_success_after, args=(seq,), daemon=True).start()
 
 
-def show_notification(msg: str, title: str = "SunnyNotSummer", level: str = "INFO", source: str = "show_notification") -> bool:
+def show_notification(
+    msg: str,
+    title: str = "SunnyNotSummer",
+    level: str = "INFO",
+    source: str = "show_notification",
+    force: bool = False,
+) -> bool:
     global _APP_ICON
     cfg = get_config()
-    if not bool(cfg.get("status_notify_enabled", True)):
+    if not force and not bool(cfg.get("status_notify_enabled", True)):
         return False
     shown = False
     if _APP_ICON and getattr(_APP_ICON, "HAS_NOTIFICATION", False):
@@ -255,6 +276,7 @@ def show_message_box_notification(
 ) -> bool:
     text = str(message or "")
     caption = str(title or "SunnyNotSummer")
+    log_activity(text, level=level, source=source)
     try:
         ctypes.windll.user32.MessageBoxW(0, text, caption, int(flags))
     except Exception as e:
@@ -287,12 +309,14 @@ def set_status(msg: str) -> None:
     with _STATUS_LOCK:
         if message == _LAST_STATUS_MESSAGE and (now - _LAST_STATUS_TS) < _STATUS_DEDUPE_WINDOW_SEC:
             log_telemetry("status_suppressed", {"message": message, "window_sec": _STATUS_DEDUPE_WINDOW_SEC})
-            return
         _LAST_STATUS_MESSAGE = message
         _LAST_STATUS_TS = now
 
     log_telemetry("status", {"message": message})
-    show_notification(message, level=status_level, source="set_status")
+    log_activity(message, level=status_level, source="set_status")
+    shown = show_notification(message, level=status_level, source="set_status", force=True)
+    if not shown:
+        mirror_notification_to_clipboard(message, level=status_level, source="set_status")
 
 
 def safe_clipboard_read(max_attempts: int = 3, delay: float = 0.05) -> Tuple[Any, Optional[Exception]]:

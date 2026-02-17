@@ -19,6 +19,7 @@
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
 - **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
 - **Status Update:** Graph handling now runs through unified REF with tray toggle `GRAPH MODE ON/OFF` (no separate graph hotkey/store path).
+- **Startup Reliability Check:** app startup probes both the selected solve model and `gpt-5.2` graph-extraction model; failures emit user-visible warnings.
 
 ### II. INPUT CLASSIFICATION LAYER
 
@@ -84,9 +85,13 @@
 - `llm_pipeline.py:439`: `client.responses.create(**req)`
 **B. Retry Guard**
 - `llm_pipeline.py:481`: Internal retry for "unsupported parameter temperature".
-**C. Graph Identifier Selector (Scaffold)**
-- Tray now includes a dedicated `Graph Identifier Model` selector persisted in config (`graph_identifier_model`).
-- This selector is currently preparatory only; graph-toggle behavior and solve routing are unchanged until classifier wiring is enabled.
+**C. Graph Identifier Selector**
+- Tray includes a dedicated `Graph Identifier Model` selector persisted in config (`graph_identifier_model`).
+- Current scout implementation is pinned to `gpt-4o-mini`; selector remains available for staged routing work.
+**D. REF-Prime Scout Classifier**
+- `detect_graph_presence(image_path, ...)` runs only in REF image priming flow.
+- Scout call is pinned to `gpt-4o-mini` and returns binary `YES/NO`.
+- `YES` routes to graph-evidence extraction; `NO` falls back to normal REF classification.
 
 ### VIII. RETRY SYSTEM
 
@@ -121,10 +126,11 @@
 - During graph-mode image REF priming, graph evidence extraction is pinned to `gpt-5.2` for strongest visual parsing before solve-time reasoning.
 **A2. Auto Graph Identifier (Flag-Gated)**
 - Image REF priming path can run `detect_graph_presence(...)` when `ENABLE_AUTO_GRAPH_DETECT_REF_PRIME` is enabled.
-- If confidence meets `graph_identifier_min_confidence`, REF prime routes to graph-evidence extraction; otherwise it falls back to standard REF classification.
+- Binary route: `YES` triggers graph-evidence extraction, `NO` falls back to standard REF classification.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
 - Unified metadata fields: `graph_mode`, `graph_evidence`, `last_primed_ts`.
+- `save_starred_meta` now uses atomic write (`.tmp` then replace).
 **C. Injection**
 - `llm_pipeline.py:1251`: Meta loaded per solve.
 - `llm_pipeline.py:1348`: Injected into payload if active.

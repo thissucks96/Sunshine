@@ -78,6 +78,7 @@ _ref_dispatch_lock = threading.Lock()
 
 _STARTUP_INPUT_LOCKOUT_SEC = 0.75
 _REF_TOGGLE_DEBOUNCE_SEC = 0.3
+GRAPH_EXTRACTION_MODEL = "gpt-5.2"
 
 
 def ensure_single_instance() -> bool:
@@ -242,6 +243,26 @@ def _probe_model_runtime(model_name: str, call_model: Optional[str] = None, requ
                 client.close()
             except Exception:
                 pass
+
+
+def _run_startup_model_probes(cfg: Optional[Dict[str, object]] = None) -> None:
+    c = cfg or get_config()
+    selected_model = _active_model_name(c)
+    selected_ok, selected_reason = _probe_model_runtime(selected_model)
+    if not selected_ok:
+        log_telemetry(
+            "startup_model_probe_failed",
+            {"model": selected_model, "reason": selected_reason, "probe_type": "selected"},
+        )
+        set_status(f"Selected model [{selected_model}] is offline; please select another.")
+
+    graph_model_ok, graph_model_reason = _probe_model_runtime(GRAPH_EXTRACTION_MODEL)
+    if not graph_model_ok:
+        log_telemetry(
+            "startup_model_probe_failed",
+            {"model": GRAPH_EXTRACTION_MODEL, "reason": graph_model_reason, "probe_type": "graph_extraction"},
+        )
+        set_status("5.2 is offline; High-precision Graph Extraction is disabled.")
 
 
 def _persist_config_changes(changes: Dict[str, object], source: str) -> Optional[Dict[str, object]]:
@@ -837,6 +858,8 @@ def main():
     set_reference_active(False)
 
     setup_hotkeys(icon)
+    if api_key:
+        _run_startup_model_probes(cfg)
     _announce_model_active(_active_model_name(cfg))
     log_telemetry("startup_model", {"model": _active_model_name(cfg)})
     icon.run()
