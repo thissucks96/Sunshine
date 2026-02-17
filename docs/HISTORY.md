@@ -1,3 +1,13 @@
+## 2026-02-17 — Implement Unified REF Graph Mode Runtime
+
+- Removed legacy dedicated graph-reference runtime wiring (separate graph hotkey/store path) from active execution.
+- Added unified graph mode metadata in config/runtime: `graph_mode`, `graph_evidence`, and `last_primed_ts`.
+- Added tray toggle `GRAPH MODE ON/OFF` to control graph-mode behavior without introducing a separate REF system.
+- Updated REF priming behavior: when graph mode is ON and the next REF is primed as image, graph evidence is extracted immediately and cached for subsequent solves.
+- Updated solve payload assembly: if graph mode is ON and cached graph evidence is valid, evidence is prepended before normal context; invalid or absent evidence safely falls back to normal REF behavior.
+- Added graph-mode tests in `tests/test_graph_mode_behavior.py` (state toggle, priming extraction, payload injection, fallback).
+- Preserved output and runtime contracts: `WORK:` / `FINAL ANSWER:` headers unchanged, normalization unchanged, clipboard flow unchanged, graph retry remains disabled.
+
 ## 2026-02-17 — Direction Update: Unified REF Graph Mode
 
 - Product direction update: adopt a single REF pipeline plus a `graph_mode` toggle (`ON/OFF`).

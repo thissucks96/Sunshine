@@ -1,3 +1,21 @@
+## 2026-02-17 — Unified REF Graph Mode Runtime Implemented
+
+Description:
+Unified graph-mode behavior is now live in runtime using the existing REF pipeline.
+
+Implemented Behavior:
+- `graph_mode` is a shared boolean toggle in metadata/config.
+- When graph mode is ON and REF is primed with an image, graph evidence extraction runs immediately and caches structured evidence.
+- Solve payload prepends cached graph evidence when valid; otherwise falls back to normal REF path.
+
+Constraints Preserved:
+- `WORK:` / `FINAL ANSWER:` headers unchanged.
+- Output normalization and clipboard write flow unchanged.
+- Graph retry remains disabled.
+
+Status:
+Implemented and validated with targeted tests.
+
 ## 2026-02-16 — Vertex Hallucination Under STARRED Graph
 
 Description:
@@ -23,7 +41,7 @@ Resolved — False alarm for correctness; documented for architectural context.
 Description:
 Direction shifted to a single REF pipeline with a `graph_mode` toggle.
 
-Planned Behavior:
+Behavior (Implemented):
 - If graph mode is ON and REF is not active, next REF capture is armed as graph context.
 - REF-prime step runs graph evidence extraction and caches structured evidence.
 - Graph-like solves reuse cached graph evidence as secondary context.

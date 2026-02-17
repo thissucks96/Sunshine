@@ -3,9 +3,9 @@
 # SunnyNotSummer Codebase Walkthrough
 
 ## Current Stable Anchor
-- Branch: `feature/graph-evidence-validator`
+- Branch: `feature/forced-visual-extraction`
 - Stable Tag: `exam-ready-v1`
-- Latest Commit: `edc730f`
+- Latest Commit: `4b113ac`
 - Feature Flags Default: All new diagnostic flags OFF
 
 ## Session Start Protocol
@@ -21,27 +21,27 @@
 - `first-graph-success` (`552a7ad`)
 
 ## Stabilization Status
-- Current branch: `feature/graph-evidence-validator`
+- Current branch: `feature/forced-visual-extraction`
 - Working tree: clean
-- Test suite: 23/23 passing
-- Graph Evidence Validator: implemented and fully tested
+- Unified graph mode runtime: implemented and tested
+- Graph-mode targeted suite: passing
 - Feature flags default: OFF
-- No runtime behavior mutation introduced
+- Core output contract remains unchanged
 
 ## Branching Strategy
-- Active stabilization branch: `feature/graph-evidence-validator`
+- Active stabilization branch: `feature/forced-visual-extraction`
 - This branch supersedes `implement-auto-model-feature`
-- Validator must remain fully stable before new feature work
+- Unified graph mode must remain fully stable before new feature work
 - Auto-model will be implemented in a NEW branch created from this stabilized baseline
 - No auto-model development should occur on this branch
 - New branch creation requires explicit approval
 
 ---
 
-Direction Update (Planned):
-- Graph support is moving to a unified REF pipeline with a `graph_mode` toggle, instead of a separate graph-reference hotkey/store.
-- When graph mode is enabled with no active REF, the next REF capture is treated as graph context and graph-evidence extraction is performed at REF-prime time.
-- Solve requests will reuse cached graph evidence for graph-like prompts while preserving existing output and clipboard contracts.
+Direction Update (Implemented):
+- Graph support now uses a unified REF pipeline with a `graph_mode` toggle (`GRAPH MODE ON/OFF` in tray), replacing the prior dedicated graph-reference wiring.
+- When graph mode is enabled, REF priming with an image performs graph-evidence extraction immediately and caches evidence metadata for reuse.
+- Solve requests reuse cached graph evidence as secondary context when valid, while preserving output and clipboard contracts.
 
 1 Executive Overview
 SunnyNotSummer is a Windows tray-first clipboard solver that captures text or image input from the clipboard, optionally applies a STAR/REF reference context, sends a constrained prompt to the OpenAI Responses API, post-processes the model output into a deterministic math format, writes results back to clipboard (full result then final answer), and surfaces state through tray icon color, tray notifications, and telemetry. The core runtime is orchestrated in `main.py:733` (`main`), solve/reference logic lives in `llm_pipeline.py:846` (`solve_pipeline`) and `llm_pipeline.py:1074` (`toggle_star_worker`), configuration/state persistence is in `config.py`, and cross-cutting UI/clipboard/telemetry helpers are in `utils.py`.
@@ -472,7 +472,7 @@ Dedupe window: Time window (`_STATUS_DEDUPE_WINDOW_SEC`, 0.3s) that suppresses r
 Tray state: Internal icon state machine (`IDLE`, `REFERENCE_PRIMED`, `PROMPT_SUCCESS`, `ERROR`) rendered by tray icon color/icon.
 Active solve state: Shared runtime record (`_active_solve_client`, cancel event, solve id/model) used to cancel in-flight requests when model changes.
 Model probe: Lightweight API request executed before switching active model to verify reachability and model identity.
-Graph-domain/range retry hint: A targeted second prompt pass when output suggests weak endpoint-marker reasoning for graph interval answers.
+Graph-domain/range retry hint: Retained helper for targeted prompt guidance, but runtime solve loop path is intentionally disabled.
 Two-phase clipboard write: Solve output strategy that writes full formatted output first, then writes final-answer-only payload after a short settle delay.
 Structured notification payload: Clipboard block emitted for user-visible notifications with keys `NOTIFICATION_TYPE`, `TIMESTAMP`, `SOURCE`, `MESSAGE`.
 

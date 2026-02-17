@@ -3,9 +3,9 @@
 # SunnyNotSummer Roadmap
 
 ## Current Stable Anchor
-- Branch: `feature/graph-evidence-validator`
+- Branch: `feature/forced-visual-extraction`
 - Stable Tag: `exam-ready-v1`
-- Latest Commit: `edc730f`
+- Latest Commit: `4b113ac`
 - Feature Flags Default: All new diagnostic flags OFF
 
 ## Session Start Protocol
@@ -21,17 +21,17 @@
 - `first-graph-success` (`552a7ad`)
 
 ## Stabilization Status
-- Current branch: `feature/graph-evidence-validator`
+- Current branch: `feature/forced-visual-extraction`
 - Working tree: clean
-- Test suite: 23/23 passing
-- Graph Evidence Validator: implemented and fully tested
+- Unified graph mode runtime: implemented
+- Graph-mode targeted suite: passing
 - Feature flags default: OFF
-- No runtime behavior mutation introduced
+- Core output contract remains unchanged
 
 ## Branching Strategy
-- Active stabilization branch: `feature/graph-evidence-validator`
+- Active stabilization branch: `feature/forced-visual-extraction`
 - This branch supersedes `implement-auto-model-feature`
-- Validator must remain fully stable before new feature work
+- Unified graph mode must remain fully stable before new feature work
 - Auto-model will be implemented in a NEW branch created from this stabilized baseline
 - No auto-model development should occur on this branch
 - New branch creation requires explicit approval
@@ -69,15 +69,13 @@
 - Prioritize graph/vision correctness per `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Phase 2 (Near-Term)
-- Implement unified REF graph mode (`graph_mode` ON/OFF) in the existing REF pipeline.
-- Add "armed next REF" behavior so enabling graph mode with no active REF marks the next REF capture as graph context.
-- Extract and cache graph evidence at REF-prime time for reuse during subsequent graph-like solve requests.
+- Keep unified REF graph mode (`graph_mode` ON/OFF) stable in production.
+- Improve graph evidence extraction quality and confidence handling without changing solve output contract.
 - Keep `WORK:` / `FINAL ANSWER:` contract, normalization, retry policy (graph retry disabled), and clipboard flow unchanged.
 - Add optional auto model routing (`AUTO`) behind a disabled-by-default config flag.
 - Introduce a metadata lock for `STARRED_META.json` read/modify/write paths.
 - Add a critical telemetry allowlist that logs key failures even when `debug=false`.
 - Add fallback behavior when tray notification backend fails.
-- Add graph evidence extraction stage before final answer generation.
 - Add WORK-vs-FINAL interval consistency validation.
 - Expand graph retry triggers beyond current phrase matching.
 - Add dual OCR path and reconciliation for sign/symbol-sensitive math text.
@@ -109,4 +107,4 @@
 - Vision-specific accuracy audit report: `docs/VISION_ACCURACY_AUDIT_2026_02.md`.
 
 ## Last Updated
-- 2026-02-16
+- 2026-02-17

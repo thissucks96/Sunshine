@@ -5,9 +5,9 @@
 SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, solves math with OpenAI Responses API, and writes deterministic results back to clipboard.
 
 ## Current Stable Anchor
-- Branch: `feature/graph-evidence-validator`
+- Branch: `feature/forced-visual-extraction`
 - Stable Tag: `exam-ready-v1`
-- Latest Commit: `edc730f`
+- Latest Commit: `4b113ac`
 - Feature Flags Default: All new diagnostic flags OFF
 
 ## Session Start Protocol
@@ -23,17 +23,17 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - `first-graph-success` (`552a7ad`)
 
 ## Stabilization Status
-- Current branch: `feature/graph-evidence-validator`
+- Current branch: `feature/forced-visual-extraction`
 - Working tree: clean
-- Test suite: 23/23 passing
-- Graph Evidence Validator: implemented and fully tested
+- Unified graph mode runtime: implemented and tested
+- Graph-mode targeted test suite: passing (`tests/test_graph_mode_behavior.py`)
 - Feature flags default: OFF
-- No runtime behavior mutation introduced
+- Output contract stability preserved (`WORK:` / `FINAL ANSWER:` unchanged)
 
 ## Branching Strategy
-- Active stabilization branch: `feature/graph-evidence-validator`
+- Active stabilization branch: `feature/forced-visual-extraction`
 - This branch supersedes `implement-auto-model-feature`
-- Validator must remain fully stable before new feature work
+- Unified graph mode must remain stable before new feature work
 - Auto-model will be implemented in a NEW branch created from this stabilized baseline
 - No auto-model development should occur on this branch
 - New branch creation requires explicit approval
@@ -56,6 +56,7 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - REF toggle hotkey: `ctrl+shift+s`
 - Cycle model hotkey: `ctrl+shift+m`
 - Quit hotkey: `ctrl+shift+q`
+- Graph mode toggle: tray menu `GRAPH MODE ON/OFF`
 
 ## Documentation
 - Architecture walkthrough: `docs/ARCHITECTURE.md`
@@ -76,4 +77,4 @@ SunnyNotSummer is a Windows tray assistant that reads clipboard text/images, sol
 - Auto-model work should remain sequenced after graph-accuracy stabilization on the current branch baseline.
 
 ## Last Updated
-- 2026-02-16
+- 2026-02-17

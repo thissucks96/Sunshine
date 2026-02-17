@@ -16,8 +16,8 @@ Then wait for explicit user approval before producing the final Codex instructio
 
   * Graph Evidence Validator architecture and design documentation normalized and expanded
   * STARRED REFERENCE backend behavior audited and documented
-  * Baseline snapshot tag created before forced visual extraction work
-* Current Phase: Graph accuracy improvement and forced visual extraction planning pre implementation
+  * Unified graph mode runtime implemented in active branch (`graph_mode` + cached graph evidence)
+* Current Phase: Graph-mode stabilization and accuracy hardening
 
 ## Priorities
 
@@ -27,8 +27,8 @@ Then wait for explicit user approval before producing the final Codex instructio
 
 ## Next Feature Target
 
-* Forced visual extraction for graph solves
-* Objective: increase reliability of graph perception evidence before final interval domain range claims
+* Graph-mode evidence quality improvements and optional auto-model follow-up
+* Objective: improve reliability of cached graph evidence while preserving solve/output contract stability
 
 ## Constraints
 
@@ -39,9 +39,9 @@ Then wait for explicit user approval before producing the final Codex instructio
 
 ## Expectations For Next Session
 
-* Prepare a precise Codex execution prompt for forced visual extraction implementation
-* Keep implementation behind flags and preserve warning only safety where applicable
-* Review proposed diffs for behavioral regression risk before merge
+* Validate graph-mode behavior under mixed text/image REF scenarios
+* Keep forced visual extraction flag-gated and graph retry disabled
+* Review low-risk instrumentation improvements before model-routing changes
 * Follow AGENTS.md operating rules for scope control validation and commit hygiene
 
 ## Snapshot Schema Reference Template

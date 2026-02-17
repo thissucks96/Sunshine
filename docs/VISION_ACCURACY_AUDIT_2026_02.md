@@ -22,8 +22,8 @@
 10. API call is executed in `_responses_text()` through `client.responses.create(**req)` with retries in caller.
     Anchor: `llm_pipeline.py:340`, search token `def _responses_text(`.
     Anchor: `llm_pipeline.py:380`, search token `resp = client.responses.create(**req)`.
-11. A graph-specific retry is optionally triggered if output appears weak for graph domain/range endpoint evidence.
-    Anchor: `llm_pipeline.py:975`, search token `if _needs_graph_domain_range_retry(input_obj, candidate):`.
+11. Graph-specific retry path exists as helper logic but is disabled in `solve_pipeline`.
+    Anchor: `llm_pipeline.py`, search token `# if _needs_graph_domain_range_retry(input_obj, candidate):`.
 12. Output is cleaned and normalized through symbol cleanup + graph/domain post-processors.
     Anchor: `llm_pipeline.py:1021`, search token `out = _normalize_final_answer_block(out)`.
     Anchor: `llm_pipeline.py:1022`, search token `_maybe_enforce_points_to_plot`.
@@ -158,12 +158,12 @@
    Anchor: prompt and retry anchors above.
 
 4 Concrete Accuracy Improvements
-1. Add a dedicated graph evidence extraction pass before final solve answering.
-   Change: Add a separate call in `solve_pipeline` for image graph tasks that returns structured evidence (JSON-like fields: x/y scale, left/right endpoint coordinates, marker type, arrows, asymptotes, visible breaks).
-   Anchor for insertion: `llm_pipeline.py:950`, search token `payload = _build_solve_payload(`.
-   Justification: separates perception from reasoning; allows consistency checks.
-   Expected impact: high reduction in endpoint and interval mistakes.
-   Test idea: fixture set with open/closed endpoint variants and expected extracted marker fields.
+1. Implemented: dedicated graph evidence extraction at REF-prime time.
+   Change: `toggle_star_worker` runs `extract_graph_evidence(...)` when graph mode is ON and image REF is primed, then caches evidence in metadata.
+   Anchor: `llm_pipeline.py`, search token `def extract_graph_evidence(`.
+   Justification: separates graph perception from solve-time reasoning and allows reuse across related prompts.
+   Impact: improves consistency for repeated graph-question sets while keeping solve/output contract stable.
+   Test coverage: `tests/test_graph_mode_behavior.py` validates extraction run and payload usage.
 
 2. Add dual OCR path with reconciliation for visual math text.
    Change: run OCR on both raw normalized image and preprocessed image, then merge by confidence/consistency rules.

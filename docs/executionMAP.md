@@ -18,7 +18,7 @@
   - `main.py:550` / `586` (Hotkey registration/trigger)
 - **Flow:** `keyboard.add_hotkey(...)` → `_debounced("run", worker)` → `worker()`
 - **Operational Note:** External keyboard-hook tools (e.g., AutoHotkey v1 scripts with global remaps) can block `ctrl+shift+x` hotkey activation. Tray `Solve Now` remains functional because it dispatches directly to the same worker path.
-- **Direction Update:** Graph handling is moving to a unified REF pipeline with a `graph_mode` toggle (`ON/OFF`).
+- **Status Update:** Graph handling now runs through unified REF with tray toggle `GRAPH MODE ON/OFF` (no separate graph hotkey/store path).
 
 ### II. INPUT CLASSIFICATION LAYER
 
@@ -93,7 +93,7 @@
 **B. Graph Retry Path (Disabled in solve loop)**
 - `llm_pipeline.py:1036`: `def _needs_graph_domain_range_retry(...)` (helper retained)
 - `llm_pipeline.py:1093`: `def _with_graph_domain_range_retry_hint(...)` (helper retained)
-- `llm_pipeline.py:1410`: graph retry branch is commented out in `solve_pipeline`, so no graph-specific second API call is executed.
+- `llm_pipeline.py:1527`: graph retry branch is commented out in `solve_pipeline`, so no graph-specific second API call is executed.
 
 ### IX. OUTPUT NORMALIZATION LAYER
 
@@ -113,14 +113,14 @@
 
 **A. Activation**
 - `main.py:502`: `toggle_star_worker`
-- Direction target: graph mode uses the same REF toggle flow and arms the next REF capture as graph context when enabled.
+- Graph mode uses the same REF toggle flow and graph mode ON is controlled by tray entry `GRAPH MODE ON/OFF`.
 **B. Persistence**
 - `STARRED_META.json`, `STARRED.txt`, `REFERENCE_IMG/`
-- Direction target metadata: `graph_mode_enabled` and graph-evidence cache fields captured at REF-prime time.
+- Unified metadata fields: `graph_mode`, `graph_evidence`, `last_primed_ts`.
 **C. Injection**
 - `llm_pipeline.py:1251`: Meta loaded per solve.
 - `llm_pipeline.py:1348`: Injected into payload if active.
-- Direction target: graph-mode evidence is added as secondary context for graph-like solves while non-graph solves keep standard REF behavior.
+- If graph mode is ON and cached evidence is valid, graph evidence is prepended as secondary context; otherwise solve falls back to standard REF behavior.
 **D. Edge Cases**
 - Startup clears reference (`main.py:751`).
 - Model switch preserves reference.
@@ -156,7 +156,7 @@
 3. **Normalization:** Image resized/converted.
    - *Code:* `img = normalize_image_for_api(raw_clip, cfg)` (main.py:465)
 4. **Graph Heuristic:** `_build_solve_payload` flags it as graph problem.
-   - *Code:* `is_graph_problem = True` (llm_pipeline.py:503)
+   - *Code:* `should_force_visual_extraction = ...` (flag + image/reference/text cues in `_build_solve_payload`)
 5. **Execution & Output:** Same as Route 1.
 
 ### Route 3: Starred Reference Priming
@@ -164,10 +164,10 @@
 1. **User Action:** User hits `Win+Shift+A` (or configured hotkey).
 2. **Dispatch:** `star_worker` runs.
    - *Code:* `toggle_star_worker(client)` (main.py:502)
-3. **Classification:** Model determines if reference is Text or Visual.
-   - *Code:* `label_raw = _responses_text(...)` (llm_pipeline.py:1108)
-4. **Persistence:** State saved to JSON.
-   - *Code:* `save_starred_meta(meta)` (llm_pipeline.py:1209)
+3. **Graph Mode ON Path:** If graph mode is enabled and REF prime content is image, graph evidence extraction runs immediately.
+   - *Code:* `extract_graph_evidence(...)` (llm_pipeline.py:391)
+4. **Persistence:** REF metadata is saved with `graph_evidence` and `last_primed_ts`.
+   - *Code:* `save_starred_meta(meta)` (llm_pipeline.py)
 
 ---
 
@@ -175,7 +175,7 @@
 
 | Feature | Status | Location |
 | :--- | :--- | :--- |
-| **Graph Retry** | ⏸ Disabled In `solve_pipeline` | `llm_pipeline.py:1410` |
+| **Graph Retry** | ⏸ Disabled In `solve_pipeline` | `llm_pipeline.py` (commented retry branch) |
 | **Graph Validator** | ⚠️ Warning Only | `llm_pipeline.py:945` |
-| **Forced Visual Extraction** | ✅ Flag-Gated Prompt Injection | `llm_pipeline.py:516` |
-| **Pre-Solve Classifier** | ❌ Not Implemented | (Heuristic only) |
+| **Forced Visual Extraction** | ✅ Flag-Gated Prompt Injection | `_build_solve_payload` in `llm_pipeline.py` |
+| **Unified Graph Mode** | ✅ Implemented (`graph_mode` + evidence cache) | `main.py`, `llm_pipeline.py`, `config.py` |

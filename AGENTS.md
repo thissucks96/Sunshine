@@ -7,7 +7,7 @@ Use this file as the default instruction set for coding agents working in this r
 ## Current Stable Anchor
 * Branch: `feature/forced-visual-extraction`
 * Stable Tag: `exam-ready-v1`
-* Latest Commit: `edc730f`
+* Latest Commit: `4b113ac`
 * Feature Flags Default: All new diagnostic flags OFF
 
 ## Session Start Protocol
@@ -24,16 +24,16 @@ Use this file as the default instruction set for coding agents working in this r
 
 ## Stabilization Status
 * Current branch: `feature/forced-visual-extraction`
-* Working tree: clean (after scaffold commit)
-* Test suite: 23/23 passing
-* Graph Evidence Validator: implemented and fully tested
+* Working tree: clean (before current docs update)
+* Unified graph mode runtime: implemented and tested
+* Graph-mode targeted suite: `tests/test_graph_mode_behavior.py` passing
 * Feature flags default: OFF
-* No runtime behavior mutation introduced
+* Output contract remains stable (`WORK:` / `FINAL ANSWER:` unchanged)
 
 ## Branching Strategy
 * Active stabilization branch: `feature/forced-visual-extraction`
 * This branch supersedes `implement-auto-model-feature`
-* Validator must remain fully stable before new feature work
+* Unified graph mode must remain fully stable before new feature work
 * Auto-model will be implemented in a NEW branch created from this stabilized baseline
 * No auto-model development should occur on this branch
 * New branch creation requires explicit approval

@@ -3,9 +3,9 @@
 # SunnyNotSummer Architecture Review - 2026_02
 
 ## Current Stable Anchor
-- Branch: `feature/graph-evidence-validator`
+- Branch: `feature/forced-visual-extraction`
 - Stable Tag: `exam-ready-v1`
-- Latest Commit: `edc730f`
+- Latest Commit: `4b113ac`
 - Feature Flags Default: All new diagnostic flags OFF
 
 ## Session Start Protocol
@@ -21,17 +21,17 @@
 - `first-graph-success` (`552a7ad`)
 
 ## Stabilization Status
-- Current branch: `feature/graph-evidence-validator`
+- Current branch: `feature/forced-visual-extraction`
 - Working tree: clean
-- Test suite: 23/23 passing
-- Graph Evidence Validator: implemented and fully tested
+- Unified graph mode runtime: implemented and tested
+- Graph-mode targeted suite: passing
 - Feature flags default: OFF
-- No runtime behavior mutation introduced
+- Core solve output contract remains unchanged
 
 ## Branching Strategy
-- Active stabilization branch: `feature/graph-evidence-validator`
+- Active stabilization branch: `feature/forced-visual-extraction`
 - This branch supersedes `implement-auto-model-feature`
-- Validator must remain fully stable before new feature work
+- Unified graph mode must remain fully stable before new feature work
 - Auto-model will be implemented in a NEW branch created from this stabilized baseline
 - No auto-model development should occur on this branch
 - New branch creation requires explicit approval
@@ -46,6 +46,7 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
 - Model switching now cancels active solves before probing or activating new model.
 - Exact `gpt-5` is normalized/migrated out of selectable config.
 - REF assignment has classifier and OCR-based fallback paths.
+- Unified graph mode now uses the same REF flow and caches graph evidence at REF-prime time.
 - Status and popup notifications are centrally mirrored to structured clipboard payloads.
 - Solve cancellation checks are present at key pre/post request and clipboard stages.
 
@@ -79,4 +80,4 @@ Repository-level walkthrough refresh and runtime reliability audit aligned to cu
 - Full detailed walkthrough is in `docs/ARCHITECTURE.md`.
 
 ## Last Updated
-- 2026-02-16
+- 2026-02-17
