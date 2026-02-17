@@ -87,6 +87,50 @@ class GraphEvidenceParserTests(unittest.TestCase):
 
         self.assertIsNone(evidence)
 
+    def test_extract_graph_evidence_block_accepts_optional_fields(self):
+        text = (
+            "WORK:\n"
+            "GRAPH_EVIDENCE:\n"
+            "  LEFT_ENDPOINT: x=-2, y=0, marker=closed\n"
+            "  RIGHT_ENDPOINT: x=4, y=-5, marker=open\n"
+            "  ASYMPTOTES: y=2\n"
+            "  DISCONTINUITIES: none\n"
+            "  INTERCEPTS: (x=2, y=0); (x=0, y=-4)\n"
+            "  KEY_POINTS: (x=5, y=13)\n"
+            "  SCALE: x_tick=1, y_tick=1\n"
+            "  CONFIDENCE: 0.88\n"
+            "FINAL ANSWER:\n"
+            "Domain: (-∞, ∞)\n"
+        )
+
+        evidence = llm_pipeline._extract_graph_evidence_block(text)
+
+        self.assertIsNotNone(evidence)
+        self.assertEqual(evidence["intercepts"], ["(x=2, y=0)", "(x=0, y=-4)"])
+        self.assertEqual(evidence["key_points"], ["(x=5, y=13)"])
+        self.assertEqual(evidence["asymptotes"], ["y=2"])
+
+    def test_extract_graph_evidence_block_tolerates_unknown_fields(self):
+        text = (
+            "WORK:\n"
+            "GRAPH_EVIDENCE:\n"
+            "  LEFT_ENDPOINT: x=-2, y=0, marker=closed\n"
+            "  UNKNOWN_FLAG: keep_this_ignored\n"
+            "  RIGHT_ENDPOINT: x=4, y=-5, marker=open\n"
+            "  ASYMPTOTES: none\n"
+            "  DISCONTINUITIES: none\n"
+            "  SCALE: x_tick=1, y_tick=1\n"
+            "  CONFIDENCE: 0.88\n"
+            "FINAL ANSWER:\n"
+            "Domain: (-∞, ∞)\n"
+        )
+
+        evidence = llm_pipeline._extract_graph_evidence_block(text)
+
+        self.assertIsNotNone(evidence)
+        self.assertEqual(evidence["left_endpoint"]["x"], "-2")
+        self.assertEqual(evidence["right_endpoint"]["x"], "4")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,19 @@
+## 2026-02-17 — Backward-Compatible Graph Evidence Usefulness Patch
+
+- Runtime parser update in `llm_pipeline.py` for graph evidence compatibility:
+  - `_extract_graph_evidence_block(...)` now tolerates unknown uppercase fields inside `GRAPH_EVIDENCE` blocks instead of failing early.
+  - Added optional parsed fields:
+    - `INTERCEPTS`
+    - `KEY_POINTS`
+  - Existing required fields and parse contract remain unchanged.
+- Prompt update in `llm_pipeline.py`:
+  - `GRAPH_EVIDENCE_EXTRACTION_PROMPT` and `GRAPH_EVIDENCE_PROMPT_APPEND` now define optional `INTERCEPTS`/`KEY_POINTS` lines.
+  - Asymptote instructions now include behavioral detection (curve approaching constant x/y) even when no dashed guide is present, with axis safety retained.
+- Output contract remains unchanged:
+  - `WORK:` / `FINAL ANSWER:` headers unchanged.
+  - Clipboard flow unchanged.
+  - Graph retry policy remains disabled.
+
 ## 2026-02-17 — Forensic Prompt-Hardening for Graph Identifier/Extractor
 
 - Runtime prompt update in `llm_pipeline.py`:

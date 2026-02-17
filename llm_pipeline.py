@@ -111,13 +111,15 @@ GRAPH_EVIDENCE_PROMPT_APPEND = (
     "- Scale-first: locate axis labels before coordinates. If labels are not visible, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
     "- Unknown safety: if blurry/cutoff/obstructed, use unclear for affected values.\n"
     "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
-    "- Asymptotes: report only visual guide boundaries from curve behavior; do not label x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
+    "- Asymptotes: report visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even if no dashed guide is drawn; do not label x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
     "Output exactly this block shape:\n"
     "GRAPH_EVIDENCE:\n"
     "  LEFT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
     "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
     "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
     "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  INTERCEPTS: <none|(x=<...>, y=0); (x=0, y=<...>); ...>  # optional\n"
+    "  KEY_POINTS: <none|(x=<...>, y=<...>); ...>  # optional\n"
     "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
     "  CONFIDENCE: <0.0-1.0>\n"
     "Inside GRAPH_EVIDENCE do not include WORK, FINAL ANSWER, or [FINAL].\n"
@@ -132,7 +134,7 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
     "- Scale-first calibration: identify axis-unit labels before coordinates. If labels are absent, use x_tick=1.0 and y_tick=1.0 and lower CONFIDENCE.\n"
     "- Unknown safety: if image is blurry/cutoff/obstructed, use unclear for those values.\n"
     "- Marker semantics: arrow only if line reaches edge or has arrowhead; closed only for solid filled dot; open only for hollow circle.\n"
-    "- Asymptotes: identify visual vertical/horizontal guide boundaries from curve behavior; do not classify x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
+    "- Asymptotes: identify visual vertical/horizontal boundaries when the curve approaches a constant x=... or y=... value, even without a dashed guide; do not classify x-axis or y-axis as asymptotes unless behavior clearly supports it.\n"
     "If the image is not a graph on coordinate axes, return exactly: INVALID_GRAPH\n"
     "Otherwise return exactly this block and nothing else:\n"
     "GRAPH_EVIDENCE:\n"
@@ -140,6 +142,8 @@ GRAPH_EVIDENCE_EXTRACTION_PROMPT = (
     "  RIGHT_ENDPOINT: x=<value|unclear>, y=<value|unclear>, marker=<open|closed|arrow|unclear>\n"
     "  ASYMPTOTES: <none|x=<...>; y=<...>; ...>\n"
     "  DISCONTINUITIES: <none|hole at x=<...>; jump at x=<...>; ...>\n"
+    "  INTERCEPTS: <none|(x=<...>, y=0); (x=0, y=<...>); ...>  # optional\n"
+    "  KEY_POINTS: <none|(x=<...>, y=<...>); ...>  # optional\n"
     "  SCALE: x_tick=<value|unclear>, y_tick=<value|unclear>\n"
     "  CONFIDENCE: <0.0-1.0>\n"
 )
@@ -1048,7 +1052,9 @@ def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
 
     bounded_slice = source[m_header.end(): m_header.end() + 2000]
     required = ("LEFT_ENDPOINT", "RIGHT_ENDPOINT", "ASYMPTOTES", "DISCONTINUITIES", "SCALE", "CONFIDENCE")
+    optional = ("INTERCEPTS", "KEY_POINTS")
     fields: Dict[str, str] = {}
+    optional_fields: Dict[str, str] = {}
     seen_any = False
 
     for raw_line in bounded_slice.splitlines():
@@ -1058,6 +1064,8 @@ def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
                 break
             continue
         if re.search(r"(?i)\b(WORK|FINAL ANSWER|\[FINAL\])\b", stripped):
+            if len(fields) == len(required):
+                break
             log_telemetry("graph_evidence_parse_fail", {"reason": "boundary_marker_in_block"})
             return None
         m_field = re.match(r"^\s*([A-Z_]+)\s*:\s*(.+?)\s*$", raw_line)
@@ -1070,10 +1078,14 @@ def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
         if key in required:
             fields[key] = value
             seen_any = True
-            if len(fields) == len(required):
-                break
-        elif seen_any:
-            break
+            continue
+        if key in optional:
+            optional_fields[key] = value
+            seen_any = True
+            continue
+        if seen_any:
+            # Tolerate unknown uppercase fields to keep parsing backward-compatible.
+            continue
 
     missing = [k for k in required if k not in fields]
     if missing:
@@ -1104,6 +1116,8 @@ def _extract_graph_evidence_block(text: str) -> Optional[Dict[str, Any]]:
         "right_endpoint": right,
         "asymptotes": _split_semicolon_values(fields["ASYMPTOTES"]),
         "discontinuities": _split_semicolon_values(fields["DISCONTINUITIES"]),
+        "intercepts": _split_semicolon_values(optional_fields.get("INTERCEPTS", "none")),
+        "key_points": _split_semicolon_values(optional_fields.get("KEY_POINTS", "none")),
         "scale": scale,
         "confidence": confidence,
     }

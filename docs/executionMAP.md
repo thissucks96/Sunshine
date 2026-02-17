@@ -116,6 +116,10 @@
   - `SCALE` (`x_tick`, `y_tick`)
   - `CONFIDENCE` (`0.0-1.0`)
 - Allowed ambiguity tokens are built into the schema (`unclear`, `none`), so uncertain visuals should degrade gracefully instead of forcing guesses.
+- Optional usefulness fields are now supported for richer coordinate extraction without breaking required schema:
+  - `INTERCEPTS`
+  - `KEY_POINTS`
+- Behavioral asymptote instruction now explicitly allows detection from curve behavior (approaches constant x/y) even when no dashed guide is drawn.
 - Forensic hardening added:
   - observation-first visual witness rule (no algebraic inference from surrounding text)
   - scale-first calibration requirement before coordinate reporting
@@ -134,6 +138,10 @@
 **Strict Parse Enforcement**
 - Extractor output is accepted only if `_extract_graph_evidence_block(...)` validates required header + field formats.
 - Invalid/malformed extraction is treated as `INVALID_GRAPH` and does not become active graph evidence.
+- Parser is backward-compatible and tolerant:
+  - required fields are still mandatory
+  - unknown uppercase fields inside `GRAPH_EVIDENCE` are ignored
+  - optional `INTERCEPTS`/`KEY_POINTS` are parsed when present
 
 **Solve-Time Usage**
 - Cached graph evidence is injected only when:
