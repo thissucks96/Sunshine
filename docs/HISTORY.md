@@ -1,3 +1,8 @@
+## 2026-02-17 — Document Graph Identifier Sample Fixture Set
+
+- Added project note: `tests/GRAPH_CHECKER/` is the sample graph image set reserved for graph-identifier evaluation and tuning.
+- This is documentation-only; no runtime behavior changes were introduced.
+
 ## 2026-02-17 — Add Graph Identifier Model Selector Scaffold
 
 - Added config key `graph_identifier_model` with normalization and migration handling (including removed-model fallback).
