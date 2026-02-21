@@ -57,6 +57,10 @@ Thumbs.db
 htmlcov/
 
 # =========================
+# Testing
+# =========================
+/tests
+# =========================
 # Jupyter (if ever used)
 # =========================
 .ipynb_checkpoints/

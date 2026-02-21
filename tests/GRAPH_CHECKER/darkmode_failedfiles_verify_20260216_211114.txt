@@ -1,0 +1,4 @@
+Passed 0/3
+graph is present dark mode (2).png | FAIL | key_points=['(x=2, y=-1)']
+graph is present dark mode (3).png | FAIL | key_points=['(x=1, y=-2)']
+graph is present dark mode (5).png | FAIL | key_points=['(x=2, y=-3)']

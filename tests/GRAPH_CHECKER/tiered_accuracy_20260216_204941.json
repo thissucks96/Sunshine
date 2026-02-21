@@ -1,0 +1,195 @@
+{
+  "generated_at": "20260216_204941",
+  "easy": {
+    "summary": {
+      "total": 10,
+      "passed": 10,
+      "hit_rate_pct": 100.0
+    },
+    "details": [
+      [
+        "graph is present (2).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (18).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (19).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (20).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (21).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (24).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (25).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (26).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (27).png",
+        true,
+        "ok"
+      ],
+      [
+        "graph is present (9).png",
+        true,
+        "ok"
+      ]
+    ]
+  },
+  "medium": {
+    "summary": {
+      "total": 8,
+      "passed": 6,
+      "hit_rate_pct": 75.0
+    },
+    "details": [
+      [
+        "graph is present (10).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (11).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (12).png",
+        false,
+        "invalid_or_missing",
+        "schema_nulls"
+      ],
+      [
+        "graph is present (13).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (14).png",
+        false,
+        "key_point_missing (5,13) got=[]",
+        "schema_nulls"
+      ],
+      [
+        "graph is present (15).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (16).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (17).png",
+        true,
+        "ok",
+        ""
+      ]
+    ]
+  },
+  "hard": {
+    "summary": {
+      "total": 10,
+      "passed": 6,
+      "hit_rate_pct": 60.0
+    },
+    "details": [
+      [
+        "graph is present (4).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (30).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present (31).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present 0.png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present dark mode (1).png",
+        true,
+        "ok",
+        ""
+      ],
+      [
+        "graph is present dark mode (2).png",
+        false,
+        "missing key point (2,-2) got=['(x=2, y=-1)', '(x=0, y=-5)  # optional']",
+        "coordinate_drift"
+      ],
+      [
+        "graph is present dark mode (3).png",
+        false,
+        "missing key point (2,-2) got=[]",
+        "schema_nulls"
+      ],
+      [
+        "graph is present dark mode (4).png",
+        false,
+        "missing key point (2,-2) got=[]",
+        "schema_nulls"
+      ],
+      [
+        "graph is present dark mode (5).png",
+        false,
+        "missing key point (2,-2) got=[]",
+        "schema_nulls"
+      ],
+      [
+        "graph is present (29).png",
+        true,
+        "ok",
+        ""
+      ]
+    ],
+    "clusters": {
+      "missed_asymptote": 0,
+      "coordinate_drift": 1,
+      "schema_nulls": 3
+    }
+  },
+  "hard_target_pct": 85.0,
+  "hard_below_target": true
+}

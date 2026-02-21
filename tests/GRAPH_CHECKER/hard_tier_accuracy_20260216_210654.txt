@@ -1,0 +1,17 @@
+Hard Tier Accuracy Report
+Passed: 7/10 = 70.00%
+Target: 85.00%
+Hard Failure Clusters: {'missed_asymptote': 0, 'coordinate_drift': 3, 'schema_nulls': 0}
+
+Below target.
+
+- graph is present (4).png | PASS | ok
+- graph is present (30).png | PASS | ok
+- graph is present (31).png | PASS | ok
+- graph is present 0.png | PASS | ok
+- graph is present dark mode (1).png | PASS | ok
+- graph is present dark mode (2).png | FAIL | missing key point (2,-2) got=['(x=0, y=-1)'] | cluster=coordinate_drift
+- graph is present dark mode (3).png | FAIL | missing key point (2,-2) got=['(x=1.5, y=-2)'] | cluster=coordinate_drift
+- graph is present dark mode (4).png | PASS | ok
+- graph is present dark mode (5).png | FAIL | missing key point (2,-2) got=['(x=2, y=-3)'] | cluster=coordinate_drift
+- graph is present (29).png | PASS | ok

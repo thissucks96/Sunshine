@@ -1,0 +1,15 @@
+Final Light-Mode Tiered Accuracy Report
+Easy: 10/10 = 100.00%
+Medium: 9/15 = 60.00%
+Hard: 8/8 = 100.00%
+Overall: 27/33 = 81.82%
+
+Easy failures: 0
+Medium failures: 6
+- graph is present (16).png: intercepts_empty
+- graph is present (22).png: intercepts_empty; key_points_empty
+- graph is present (23).png: intercepts_empty; key_points_empty
+- graph is present (28).png: intercepts_empty; key_points_empty
+- graph is present (3).png: key_points_empty
+- graph is present (5).png: key_points_empty
+Hard failures: 0

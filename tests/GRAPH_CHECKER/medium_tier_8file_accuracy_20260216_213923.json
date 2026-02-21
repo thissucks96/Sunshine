@@ -1,0 +1,50 @@
+{
+  "generated_at": "20260216_213923",
+  "summary": {
+    "passed": 7,
+    "total": 8,
+    "hit_rate_pct": 87.5
+  },
+  "checks": [
+    [
+      "graph is present (10).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (11).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (12).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (13).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (14).png",
+      false,
+      "key_point_missing (5,13) got=['(x=5, y=12)']"
+    ],
+    [
+      "graph is present (15).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (16).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (17).png",
+      true,
+      "ok"
+    ]
+  ]
+}

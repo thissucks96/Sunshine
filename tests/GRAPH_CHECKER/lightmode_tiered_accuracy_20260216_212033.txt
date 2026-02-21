@@ -1,0 +1,10 @@
+Light-Mode Tiered Accuracy Report
+Dataset size (excluding dark mode): 33
+Easy   : 10/10 = 100.00%
+Medium : 7/8 = 87.50%
+Hard   : 4/4 = 100.00%
+
+Easy failures:
+Medium failures:
+- graph is present (14).png: key_point_missing (5,13) got=[]
+Hard failures:

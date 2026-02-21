@@ -1,0 +1,10 @@
+Medium Tier 8-File Report
+Passed: 7/8 = 87.50%
+- graph is present (10).png | PASS | ok
+- graph is present (11).png | PASS | ok
+- graph is present (12).png | PASS | ok
+- graph is present (13).png | PASS | ok
+- graph is present (14).png | FAIL | key_point_missing (5,13) got=['(x=5, y=12)']
+- graph is present (15).png | PASS | ok
+- graph is present (16).png | PASS | ok
+- graph is present (17).png | PASS | ok

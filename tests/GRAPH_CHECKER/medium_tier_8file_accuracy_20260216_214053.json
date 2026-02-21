@@ -1,0 +1,50 @@
+{
+  "generated_at": "20260216_214053",
+  "summary": {
+    "passed": 8,
+    "total": 8,
+    "hit_rate_pct": 100.0
+  },
+  "checks": [
+    [
+      "graph is present (10).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (11).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (12).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (13).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (14).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (15).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (16).png",
+      true,
+      "ok"
+    ],
+    [
+      "graph is present (17).png",
+      true,
+      "ok"
+    ]
+  ]
+}

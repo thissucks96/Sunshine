@@ -1,0 +1,45 @@
+﻿Easy (10)
+graph is present (2).png
+graph is present (18).png
+graph is present (19).png
+graph is present (20).png
+graph is present (21).png
+graph is present (24).png
+graph is present (25).png
+graph is present (26).png
+graph is present (27).png
+graph is present (9).png
+
+Medium (15)
+graph is present (7).png
+graph is present (8).png
+graph is present (10).png
+graph is present (11).png
+graph is present (12).png
+graph is present (13).png
+graph is present (14).png
+graph is present (15).png
+graph is present (16).png
+graph is present (17).png
+graph is present (22).png
+graph is present (23).png
+graph is present (28).png
+graph is present (3).png
+graph is present (5).png
+
+Hard (13)
+graph is present 0.png
+graph is present (4).png
+graph is present (30).png
+graph is present (31).png
+graph is present (1).png
+graph is present (6).png
+graph is present.png
+graph is present (29).png
+graph is present dark mode (1).png
+graph is present dark mode (2).png
+graph is present dark mode (3).png
+graph is present dark mode (4).png
+graph is present dark mode (5).png
+
+Total tagged files: 38

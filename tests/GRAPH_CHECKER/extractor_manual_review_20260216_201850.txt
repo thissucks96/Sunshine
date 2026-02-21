@@ -1,0 +1,1299 @@
+Extractor Manual Review Dump
+Total: 38 | Valid: 38 | Invalid: 0
+
+FILE: graph is present (1).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.45
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.45
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (10).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (11).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=5.0, y_tick=5.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "5.0",
+    "y_tick": "5.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (12).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (13).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (14).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (15).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (16).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=5, y=13, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=5.0, y_tick=5.0
+  CONFIDENCE: 0.78
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "5",
+    "y": "13",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "5.0",
+    "y_tick": "5.0"
+  },
+  "confidence": 0.78
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (17).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=5, y=13, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.72
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "5",
+    "y": "13",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.72
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (18).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=1, y=2, marker=closed
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.84
+PARSED:
+{
+  "left_endpoint": {
+    "x": "1",
+    "y": "2",
+    "marker": "closed"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.84
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (19).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=1, y=2, marker=closed
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.86
+PARSED:
+{
+  "left_endpoint": {
+    "x": "1",
+    "y": "2",
+    "marker": "closed"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.86
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (2).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-3, y=1, marker=open
+  RIGHT_ENDPOINT: x=4, y=5, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.95
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-3",
+    "y": "1",
+    "marker": "open"
+  },
+  "right_endpoint": {
+    "x": "4",
+    "y": "5",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.95
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (20).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-4, y=0, marker=closed
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.86
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-4",
+    "y": "0",
+    "marker": "closed"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.86
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (21).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-2, y=-4, marker=open
+  RIGHT_ENDPOINT: x=3, y=-4, marker=open
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.92
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-2",
+    "y": "-4",
+    "marker": "open"
+  },
+  "right_endpoint": {
+    "x": "3",
+    "y": "-4",
+    "marker": "open"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.92
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (22).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=2; y=-1
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.82
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=2",
+    "y=-1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.82
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (23).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=2; y=-1
+  DISCONTINUITIES: none
+  SCALE: x_tick=2.0, y_tick=2.0
+  CONFIDENCE: 0.73
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=2",
+    "y=-1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "2.0",
+    "y_tick": "2.0"
+  },
+  "confidence": 0.73
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (24).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-4, y=0, marker=closed
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.78
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-4",
+    "y": "0",
+    "marker": "closed"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.78
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (25).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-1, y=-6, marker=open
+  RIGHT_ENDPOINT: x=3, y=6, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.92
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-1",
+    "y": "-6",
+    "marker": "open"
+  },
+  "right_endpoint": {
+    "x": "3",
+    "y": "6",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.92
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (26).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-1, y=-6, marker=open
+  RIGHT_ENDPOINT: x=3, y=6, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.92
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-1",
+    "y": "-6",
+    "marker": "open"
+  },
+  "right_endpoint": {
+    "x": "3",
+    "y": "6",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.92
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (27).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=-1, y=-6, marker=open
+  RIGHT_ENDPOINT: x=3, y=6, marker=closed
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.9
+PARSED:
+{
+  "left_endpoint": {
+    "x": "-1",
+    "y": "-6",
+    "marker": "open"
+  },
+  "right_endpoint": {
+    "x": "3",
+    "y": "6",
+    "marker": "closed"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.9
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (28).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=2; y=-1
+  DISCONTINUITIES: none
+  SCALE: x_tick=2, y_tick=2
+  CONFIDENCE: 0.78
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=2",
+    "y=-1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "2",
+    "y_tick": "2"
+  },
+  "confidence": 0.78
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (29).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=-1; x=1; y=0
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.78
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=-1",
+    "x=1",
+    "y=0"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.78
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (3).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=arrow, y=arrow, marker=arrow
+  RIGHT_ENDPOINT: x=arrow, y=arrow, marker=arrow
+  ASYMPTOTES: x=1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.7
+PARSED:
+{
+  "left_endpoint": {
+    "x": "arrow",
+    "y": "arrow",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "arrow",
+    "y": "arrow",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.7
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (30).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=1
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (31).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.74
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.74
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (4).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=1
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (5).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.74
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.74
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (6).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=-1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=-1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (7).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=-1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=-1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (8).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=-2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.78
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=-2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.78
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present (9).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=0; y=0
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=0",
+    "y=0"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present 0.png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=1
+  DISCONTINUITIES: none
+  SCALE: x_tick=5.0, y_tick=5.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=1"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "5.0",
+    "y_tick": "5.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present dark mode (1).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.55
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.55
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present dark mode (2).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.48
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.48
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present dark mode (3).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.42
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.42
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present dark mode (4).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=unclear
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.46
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "unclear"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.46
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present dark mode (5).png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: none
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.52
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.52
+}
+
+--------------------------------------------------------------------------------
+
+FILE: graph is present.png
+STATUS: VALID
+RAW:
+GRAPH_EVIDENCE:
+  LEFT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  RIGHT_ENDPOINT: x=unclear, y=unclear, marker=arrow
+  ASYMPTOTES: x=-1; y=2
+  DISCONTINUITIES: none
+  SCALE: x_tick=1.0, y_tick=1.0
+  CONFIDENCE: 0.62
+PARSED:
+{
+  "left_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "right_endpoint": {
+    "x": "unclear",
+    "y": "unclear",
+    "marker": "arrow"
+  },
+  "asymptotes": [
+    "x=-1",
+    "y=2"
+  ],
+  "discontinuities": [],
+  "scale": {
+    "x_tick": "1.0",
+    "y_tick": "1.0"
+  },
+  "confidence": 0.62
+}
+
+--------------------------------------------------------------------------------
+
